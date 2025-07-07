@@ -1,0 +1,167 @@
+@import "tailwindcss";
+@import 'aos/dist/aos.css';
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Poppins', Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+  line-height: 1.6;
+}
+
+html, body {
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* Removed custom scrollbar styles */
+
+/* AOS custom animations */
+[data-aos] {
+  pointer-events: none;
+}
+
+[data-aos].aos-animate {
+  pointer-events: auto;
+}
+
+/* Custom animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Responsive utilities */
+.container-responsive {
+  @apply w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.section-padding {
+  @apply py-12 sm:py-16 lg:py-20;
+}
+
+/* Typography improvements */
+.heading-1 {
+  @apply text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight;
+}
+
+.heading-2 {
+  @apply text-2xl sm:text-3xl md:text-4xl font-bold leading-tight;
+}
+
+.heading-3 {
+  @apply text-xl sm:text-2xl md:text-3xl font-semibold leading-tight;
+}
+
+.body-text {
+  @apply text-base sm:text-lg leading-relaxed;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5;
+}
+
+.btn-secondary {
+  @apply bg-white hover:bg-green-50 text-green-700 font-semibold py-3 px-6 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl border border-green-200 transform hover:-translate-y-0.5;
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1;
+}
+
+/* Mobile-first responsive breakpoints */
+@media (max-width: 640px) {
+  .container-responsive {
+    @apply px-4;
+  }
+  
+  .section-padding {
+    @apply py-8;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .container-responsive {
+    @apply px-6;
+  }
+  
+  .section-padding {
+    @apply py-12;
+  }
+}
+
+@media (min-width: 1025px) {
+  .container-responsive {
+    @apply px-8;
+  }
+  
+  .section-padding {
+    @apply py-16;
+  }
+}
+
+/* Hide Swiper's default navigation arrows so only the custom SVG is visible */
+.swiper-button-next::after,
+.swiper-button-prev::after {
+  display: none !important;
+}
