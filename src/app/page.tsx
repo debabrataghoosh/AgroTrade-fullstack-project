@@ -206,10 +206,25 @@ export default function Home() {
   // Fetch products for Popular Products section
   useEffect(() => {
     fetch('/api/products')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.text();
+      })
+      .then(text => {
+        try {
+          return text ? JSON.parse(text) : [];
+        } catch {
+          return [];
+        }
+      })
       .then(data => {
         setProducts(data);
         setLoadingProducts(false);
+      })
+      .catch(err => {
+        setProducts([]);
+        setLoadingProducts(false);
+        // Optionally, set an error state here
       });
   }, []);
 

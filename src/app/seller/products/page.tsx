@@ -11,13 +11,30 @@ export default function SellerProductsPage() {
   useEffect(() => {
     if (!isLoaded) return;
     fetch("/api/products?showAll=true")
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Network response was not ok');
+        return res.text();
+      })
+      .then(text => {
+        try {
+          return text ? JSON.parse(text) : [];
+        } catch {
+          return [];
+        }
+      })
       .then(data => {
         if (user) {
           const email = user.primaryEmailAddress?.emailAddress;
-          setProducts(data.filter((p: any) => p.seller?.email === email));
+          console.log("Signed-in email:", email);
+          console.log("Product seller emails:", data.map((p: any) => p.seller?.email));
+          setProducts(data.filter((p: any) => p.seller?.email?.toLowerCase() === email?.toLowerCase()));
         }
         setLoading(false);
+      })
+      .catch(err => {
+        setProducts([]);
+        setLoading(false);
+        // Optionally, set an error state here
       });
   }, [isLoaded, user]);
 

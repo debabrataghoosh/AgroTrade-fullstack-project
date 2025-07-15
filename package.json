@@ -21,6 +21,7 @@
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
+    "dotenv": "^17.1.0",
     "formidable": "^3.5.4",
     "framer-motion": "^12.23.0",
     "mongoose": "^8.16.1",

@@ -48,18 +48,23 @@ export default function SellerOrdersPage() {
       setLoading(true);
       const sellerEmail = user?.emailAddresses?.[0]?.emailAddress || '';
       console.log('Fetching orders for seller:', sellerEmail);
-      
       const response = await fetch(`/api/orders?sellerEmail=${encodeURIComponent(sellerEmail)}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch orders');
+      let data = [];
+      if (response.ok) {
+        try {
+          const text = await response.text();
+          data = text ? JSON.parse(text) : [];
+        } catch {
+          data = [];
+        }
+        setOrders(data);
+      } else {
+        setError('Failed to fetch orders');
+        setOrders([]);
       }
-      
-      const data = await response.json();
-      console.log('Fetched orders:', data);
-      setOrders(data);
     } catch (err) {
       setError('Failed to load orders');
+      setOrders([]);
       console.error('Error fetching orders:', err);
     } finally {
       setLoading(false);
