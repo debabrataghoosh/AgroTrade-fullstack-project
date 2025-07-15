@@ -6,7 +6,7 @@ import User from '@/lib/models/User';
 import { compare } from 'bcryptjs';
 import { dbConnect } from '@/lib/mongodb';
 
-export const authOptions = {
+const authOptions = {
   adapter: MongoDBAdapter(clientPromise),
   providers: [
     CredentialsProvider({
