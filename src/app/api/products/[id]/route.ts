@@ -4,16 +4,18 @@ import Product from '@/lib/models/Product';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
     
-    if (!params.id) {
+    const { id } = await params;
+    
+    if (!id) {
       return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
     }
 
-    const product = await Product.findById(params.id);
+    const product = await Product.findById(id);
     
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });

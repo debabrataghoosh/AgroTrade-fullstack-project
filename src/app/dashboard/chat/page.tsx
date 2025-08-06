@@ -53,7 +53,7 @@ export default function BuyerChatPage() {
   const quickReplies = ["okay", "no problem", "please reply", "not interested", "make an offer"];
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded || !isSignedIn || !user?.primaryEmailAddress) return;
     // Try to fetch real data first
     fetch(`/api/buyer-chats?buyerEmail=${encodeURIComponent(user.primaryEmailAddress.emailAddress)}`)
       .then(res => res.json())
@@ -133,7 +133,7 @@ export default function BuyerChatPage() {
 
   // Main chat area with OLX-style UI (matches seller page)
   const selectedChat = chats.find((c) => c.roomId === selectedRoomId);
-  const messages = selectedRoomId ? mockMessages[selectedRoomId] || [] : [];
+  const messages = selectedRoomId ? (mockMessages as any)[selectedRoomId] || [] : [];
 
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -163,11 +163,11 @@ export default function BuyerChatPage() {
         )}
         {selectedRoomId && messages.length > 0 && (
           <>
-            {messages.map((msg, i) => (
+            {messages.map((msg: any, i: number) => (
               <div key={i} className={`flex ${msg.sender === user?.primaryEmailAddress?.emailAddress ? "justify-end" : "justify-start"}`}>
                 <div className={`px-4 py-2 rounded-2xl max-w-xs text-black ${msg.sender === user?.primaryEmailAddress?.emailAddress ? "bg-blue-100" : "bg-gray-100"}`}>
                   <div className="text-sm">{msg.content}</div>
-                  <div className="text-xs text-gray-500 mt-1 text-right">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div className="text-xs text-gray-400 mt-1 text-right">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
               </div>
             ))}

@@ -8,8 +8,8 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const searchParams = useSearchParams();
-  const search = searchParams.get('search') || '';
-  const category = searchParams.get('category') || '';
+  const search = searchParams?.get('search') || '';
+  const category = searchParams?.get('category') || '';
 
   useEffect(() => {
     let url = "/api/products";

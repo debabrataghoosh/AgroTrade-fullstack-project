@@ -7,48 +7,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSocket } from "@/app/components/SocketProvider";
 import ChatSidebar from "../components/ChatSidebar";
 
-function parseRoomId(roomId) {
+function parseRoomId(roomId: string) {
   const [product, buyer, seller] = (roomId || '').split('--');
   return { product, buyer, seller };
 }
-
-// Mock data for demo
-const mockChats = [
-  {
-    roomId: "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com",
-    productTitle: "Apple",
-    productImage: "/uploads/1751568540482-10998932.png",
-    sellerEmail: "agrotrade804@gmail.com",
-    lastMessage: "Hi, I'm interested in your Apple. Is it still available?",
-    createdAt: new Date(Date.now() - 3600000)
-  },
-  {
-    roomId: "6866d22e941ddb9ed76ac422--anotherbuyer@example.com--agrotrade804@gmail.com",
-    productTitle: "Mango",
-    productImage: "/uploads/1751568909409-11479892.png",
-    sellerEmail: "agrotrade804@gmail.com",
-    lastMessage: "What's the best price you can offer for 5kg?",
-    createdAt: new Date(Date.now() - 1800000)
-  },
-  {
-    roomId: "6866d267941ddb9ed76ac431--thirdbuyer@example.com--agrotrade804@gmail.com",
-    productTitle: "Banana",
-    productImage: "/uploads/1751568974553-bananas-white-background.jpg",
-    sellerEmail: "agrotrade804@gmail.com",
-    lastMessage: "Do you have organic bananas?",
-    createdAt: new Date(Date.now() - 900000)
-  }
-];
-
-const mockMessages = {
-  "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com": [
-    { sender: "testbuyer@example.com", content: "Hi, I'm interested in your Apple. Is it still available?", createdAt: new Date(Date.now() - 3600000) },
-    { sender: "agrotrade804@gmail.com", content: "Yes, it's available!", createdAt: new Date(Date.now() - 3500000) },
-    { sender: "testbuyer@example.com", content: "Can you deliver 2kg?", createdAt: new Date(Date.now() - 3400000) },
-  ],
-  "6866d22e941ddb9ed76ac422--anotherbuyer@example.com--agrotrade804@gmail.com": [],
-  "6866d267941ddb9ed76ac431--thirdbuyer@example.com--agrotrade804@gmail.com": [],
-};
 
 export default function ChatInboxPage() {
   const { user, isSignedIn, isLoaded } = useUser();
@@ -59,7 +21,6 @@ export default function ChatInboxPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [input, setInput] = useState("");
-  const [useMockData, setUseMockData] = useState(false);
   const [newChatProduct, setNewChatProduct] = useState<any>(null);
   const [newChatLoading, setNewChatLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -75,7 +36,7 @@ export default function ChatInboxPage() {
 
   // Auto-select chat if roomId is in query string
   useEffect(() => {
-    const roomId = searchParams.get("roomId");
+    const roomId = searchParams?.get("roomId");
     if (roomId) setSelectedRoomId(roomId);
   }, [searchParams]);
 
@@ -98,21 +59,14 @@ export default function ChatInboxPage() {
 
   // Helper to fetch chat list
   const fetchChats = async () => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded || !isSignedIn || !user?.primaryEmailAddress) return;
     setLoading(true);
     try {
       const res = await fetch(`/api/buyer-chats?buyerEmail=${encodeURIComponent(user.primaryEmailAddress.emailAddress)}`);
       const data = await res.json();
-      if (data && data.length > 0) {
-        setChats(data);
-        setUseMockData(false);
-      } else {
-        setChats([]);
-        setUseMockData(true);
-      }
+      setChats(data);
     } catch {
       setChats([]);
-      setUseMockData(true);
     } finally {
       setLoading(false);
     }
@@ -156,8 +110,8 @@ export default function ChatInboxPage() {
   };
 
   // Helper to determine if a chat is unread (last message not sent by current user and not opened)
-  function isChatUnread(chat) {
-    if (!user) return false;
+  function isChatUnread(chat: any) {
+    if (!user?.primaryEmailAddress) return false;
     if (readChats.includes(chat.roomId)) return false; // Mark as read if opened
     if (chat.lastMessageSender) {
       return chat.lastMessageSender !== user.primaryEmailAddress.emailAddress;
@@ -181,7 +135,6 @@ export default function ChatInboxPage() {
       onSelectChat={handleSelectChat}
       searchPlaceholder="Search by product or seller..."
       loading={loading}
-      useMockData={useMockData}
       filters={filters}
       activeFilter={activeFilter}
       setActiveFilter={setActiveFilter}
@@ -198,7 +151,7 @@ export default function ChatInboxPage() {
 
   const sendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!input.trim() || !selectedRoomId || !user || !socket) return;
+    if (!input.trim() || !selectedRoomId || !user?.primaryEmailAddress || !socket) return;
     const { buyer, seller } = parseRoomId(selectedRoomId);
     const msg = {
       roomId: selectedRoomId,
@@ -227,7 +180,7 @@ export default function ChatInboxPage() {
 
   const sendOffer = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!offerAmount.trim() || !selectedRoomId || !user || !socket) return;
+    if (!offerAmount.trim() || !selectedRoomId || !user?.primaryEmailAddress || !socket) return;
     const { buyer, seller } = parseRoomId(selectedRoomId);
     const msg = {
       roomId: selectedRoomId,
@@ -250,10 +203,10 @@ export default function ChatInboxPage() {
   };
 
   useEffect(() => {
-    if (!selectedRoomId || !isSignedIn || !user || !socket) return;
+    if (!selectedRoomId || !isSignedIn || !user?.primaryEmailAddress || !socket) return;
     socket.emit("join", selectedRoomId);
     socket.emit("join", user.primaryEmailAddress.emailAddress);
-    const messageListener = (msg) => {
+    const messageListener = (msg: any) => {
       if (msg.roomId === selectedRoomId) {
         setMessages((prev) => [...prev, msg]);
       }
@@ -265,9 +218,9 @@ export default function ChatInboxPage() {
   }, [selectedRoomId, isSignedIn, user, socket]);
 
   useEffect(() => {
-    if (!isSignedIn || !user || !socket) return;
+    if (!isSignedIn || !user?.primaryEmailAddress || !socket) return;
     socket.emit("join", user.primaryEmailAddress.emailAddress);
-    const newMessageListener = (msg) => {
+    const newMessageListener = (msg: any) => {
       if (msg.roomId === selectedRoomId) {
         setMessages((prev) => [...prev, msg]);
       }

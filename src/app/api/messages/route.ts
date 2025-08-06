@@ -4,7 +4,7 @@ import Message from '@/lib/models/Message';
 import User from '@/lib/models/User';
 
 // Helper to parse roomId (format: productId-buyerEmail-sellerEmail)
-function parseRoomId(roomId) {
+function parseRoomId(roomId: string) {
   const [product, buyer, seller] = roomId.split('--');
   return { product, buyer, seller };
 }

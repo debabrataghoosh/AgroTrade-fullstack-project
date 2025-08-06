@@ -27,7 +27,9 @@ export default function AddProductPage() {
     price: "",
     description: "",
     tags: [] as string[],
-    image: "",
+    image: "" as string | File,
+    quantity: "",
+    unit: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

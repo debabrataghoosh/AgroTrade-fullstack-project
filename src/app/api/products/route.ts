@@ -27,6 +27,22 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search');
   const sort = searchParams.get('sort');
   const showAll = searchParams.get('showAll');
+  const suggestions = searchParams.get('suggestions');
+  
+  // Handle suggestions request
+  if (suggestions) {
+    const q = searchParams.get('q');
+    if (!q || q.length < 1) {
+      return NextResponse.json([]);
+    }
+    // Find up to 8 product titles that match the query (case-insensitive, partial)
+    const products = await Product.find({ title: { $regex: q, $options: 'i' }, live: true })
+      .limit(8)
+      .select('title -_id');
+    const suggestions = products.map((p: any) => p.title);
+    return NextResponse.json(suggestions);
+  }
+  
   if (id) {
     const product = await Product.findById(id).populate('seller', 'name email role');
     return NextResponse.json(product);

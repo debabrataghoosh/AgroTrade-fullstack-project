@@ -16,6 +16,8 @@ const authOptions = {
         password: { label: 'Password', type: 'password', required: true },
       },
       async authorize(credentials) {
+        if (!credentials) return null;
+        
         await dbConnect();
         const user = await User.findOne({ email: credentials.email });
         if (!user) return null;
@@ -32,16 +34,16 @@ const authOptions = {
     }),
   ],
   session: {
-    strategy: 'jwt',
+    strategy: 'jwt' as const,
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.role = user.role;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (token && session.user) {
         session.user.role = token.role;
       }

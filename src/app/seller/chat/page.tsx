@@ -7,46 +7,7 @@ import io from "socket.io-client";
 import ChatSidebar from "@/app/components/ChatSidebar";
 import { useSocket } from "@/app/components/SocketProvider";
 
-// Mock data for testing UI
-const mockChats = [
-  {
-    roomId: "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com",
-    productTitle: "Apple",
-    productImage: "/uploads/1751568540482-10998932.png",
-    buyerEmail: "testbuyer@example.com",
-    lastMessage: "Hi, I'm interested in your Apple. Is it still available?",
-    createdAt: new Date(Date.now() - 3600000)
-  },
-  {
-    roomId: "6866d22e941ddb9ed76ac422--anotherbuyer@example.com--agrotrade804@gmail.com",
-    productTitle: "Mango",
-    productImage: "/uploads/1751568909409-11479892.png",
-    buyerEmail: "anotherbuyer@example.com",
-    lastMessage: "What's the best price you can offer for 5kg?",
-    createdAt: new Date(Date.now() - 1800000)
-  },
-  {
-    roomId: "6866d267941ddb9ed76ac431--thirdbuyer@example.com--agrotrade804@gmail.com",
-    productTitle: "Banana",
-    productImage: "/uploads/1751568974553-bananas-white-background.jpg",
-    buyerEmail: "thirdbuyer@example.com",
-    lastMessage: "Do you have organic bananas?",
-    createdAt: new Date(Date.now() - 900000)
-  }
-];
-
-// Mock messages for demo
-const mockMessages = {
-  "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com": [
-    { sender: "testbuyer@example.com", content: "Hi, I'm interested in your Apple. Is it still available?", createdAt: new Date(Date.now() - 3600000) },
-    { sender: "agrotrade804@gmail.com", content: "Yes, it's available!", createdAt: new Date(Date.now() - 3500000) },
-    { sender: "testbuyer@example.com", content: "Can you deliver 2kg?", createdAt: new Date(Date.now() - 3400000) },
-  ],
-  "6866d22e941ddb9ed76ac422--anotherbuyer@example.com--agrotrade804@gmail.com": [],
-  "6866d267941ddb9ed76ac431--thirdbuyer@example.com--agrotrade804@gmail.com": [],
-};
-
-function parseRoomId(roomId) {
+function parseRoomId(roomId: string) {
   const [product, buyer, seller] = (roomId || '').split('--');
   return { product, buyer, seller };
 }
@@ -57,7 +18,6 @@ export default function SellerChatPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [useMockData, setUseMockData] = useState(false);
   const [messages, setMessages] = useState<any[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [input, setInput] = useState("");
@@ -71,21 +31,14 @@ export default function SellerChatPage() {
   const socket = useSocket();
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded || !isSignedIn || !user?.primaryEmailAddress) return;
     fetch(`/api/seller-chats?sellerEmail=${encodeURIComponent(user.primaryEmailAddress.emailAddress)}`)
       .then(res => res.json())
       .then(data => {
-        if (data && data.length > 0) {
-          setChats(data);
-          setUseMockData(false);
-        } else {
-          setChats(mockChats);
-          setUseMockData(true);
-        }
+        setChats(data);
       })
       .catch(() => {
-        setChats(mockChats);
-        setUseMockData(true);
+        setChats([]);
       })
       .finally(() => setLoading(false));
   }, [isLoaded, isSignedIn, user]);
@@ -106,10 +59,10 @@ export default function SellerChatPage() {
 
   // Socket.io for real-time updates
   useEffect(() => {
-    if (!selectedRoomId || !isSignedIn || !user || !socket) return;
+    if (!selectedRoomId || !isSignedIn || !user?.primaryEmailAddress || !socket) return;
     socket.emit("join", selectedRoomId);
     socket.emit("join", user.primaryEmailAddress.emailAddress);
-    const messageListener = (msg) => {
+    const messageListener = (msg: any) => {
       if (msg.roomId === selectedRoomId) {
         setMessages((prev) => [...prev, msg]);
       }
@@ -122,9 +75,9 @@ export default function SellerChatPage() {
 
   // Listen for new-message event
   useEffect(() => {
-    if (!isSignedIn || !user || !socket) return;
+    if (!isSignedIn || !user?.primaryEmailAddress || !socket) return;
     socket.emit("join", user.primaryEmailAddress.emailAddress);
-    const newMessageListener = (msg) => {
+    const newMessageListener = (msg: any) => {
       if (msg.roomId === selectedRoomId) {
         setMessages((prev) => [...prev, msg]);
       }
@@ -162,8 +115,8 @@ export default function SellerChatPage() {
   };
 
   // Helper to determine if a chat is unread (last message not sent by current user and not opened)
-  function isChatUnread(chat) {
-    if (!user) return false;
+  function isChatUnread(chat: any) {
+    if (!user?.primaryEmailAddress) return false;
     if (readChats.includes(chat.roomId)) return false;
     if (chat.lastMessageSender) {
       return chat.lastMessageSender !== user.primaryEmailAddress.emailAddress;
@@ -187,7 +140,6 @@ export default function SellerChatPage() {
       onSelectChat={handleSelectChat}
       searchPlaceholder="Search by product or buyer..."
       loading={loading}
-      useMockData={useMockData}
       filters={filters}
       activeFilter={activeFilter}
       setActiveFilter={setActiveFilter}

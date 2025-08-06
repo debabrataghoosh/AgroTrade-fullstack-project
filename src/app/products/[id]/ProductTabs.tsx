@@ -1,7 +1,19 @@
 "use client";
 import { useState } from "react";
 
-export default function ProductTabs({ product, reviews, avgRating, totalReviews, starCounts }) {
+export default function ProductTabs({ 
+  product, 
+  reviews, 
+  avgRating, 
+  totalReviews, 
+  starCounts 
+}: { 
+  product: any;
+  reviews: any[];
+  avgRating: number;
+  totalReviews: number;
+  starCounts: number[];
+}) {
   const [tab, setTab] = useState('details');
 
   return (
@@ -40,7 +52,7 @@ export default function ProductTabs({ product, reviews, avgRating, totalReviews,
           </div>
           {/* Review list */}
           <div className="divide-y">
-            {reviews.map((r, i) => (
+            {reviews.map((r: any, i: number) => (
               <div key={i} className="flex gap-4 py-4">
                 <img src={r.avatar} alt={r.user} className="w-12 h-12 rounded-full border" />
                 <div className="flex-1">

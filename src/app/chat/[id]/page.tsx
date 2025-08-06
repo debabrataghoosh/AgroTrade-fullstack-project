@@ -5,15 +5,16 @@ import { useUser } from "@clerk/nextjs";
 import io from "socket.io-client";
 import React from "react";
 
-let socket;
+let socket: any;
 
-function parseRoomId(roomId) {
+function parseRoomId(roomId: string) {
   const [product, buyer, seller] = (roomId || '').split('--');
   return { product, buyer, seller };
 }
 
 export default function ChatPage() {
-  const { id } = useParams(); // id = chat room id (e.g., productId--buyerEmail--sellerEmail)
+  const params = useParams();
+  const id = params?.id as string; // id = chat room id (e.g., productId--buyerEmail--sellerEmail)
   const router = useRouter();
   const { user, isSignedIn } = useUser();
   const [messages, setMessages] = useState<any[]>([]);
@@ -37,14 +38,14 @@ export default function ChatPage() {
 
   // Connect to socket and join room
   useEffect(() => {
-    if (!id || !isSignedIn || !user) return;
+    if (!id || !isSignedIn || !user || !user.primaryEmailAddress) return;
     if (!socket) {
       socket = io("http://localhost:3001");
     }
     socket.emit("join", id);
     // Also join notification room for this user
     socket.emit("join", user.primaryEmailAddress.emailAddress);
-    socket.on("message", (msg) => {
+    socket.on("message", (msg: any) => {
       setMessages((prev) => [...prev, msg]);
     });
     fetchMessages();
@@ -76,7 +77,7 @@ export default function ChatPage() {
   };
 
   const sendMessage = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || !user?.primaryEmailAddress) return;
     setError("");
     const { buyer, seller } = parseRoomId(id);
     const msg = {

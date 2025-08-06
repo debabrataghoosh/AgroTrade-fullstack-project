@@ -71,7 +71,7 @@ export default function CheckoutPage() {
   });
 
   // Get productId from query params
-  const productId = searchParams.get("productId");
+  const productId = searchParams?.get("productId");
 
   // Cart state
   const [cart, setCart] = useState<any[]>([]);
@@ -79,13 +79,13 @@ export default function CheckoutPage() {
   // Load cart and addresses from localStorage on mount
   useEffect(() => {
     // If productId, title, price, etc. are in query, treat as single-product checkout
-    const title = searchParams.get('title');
-    const image = searchParams.get('image');
-    const price = searchParams.get('price');
-    const quantity = searchParams.get('quantity') || 1;
-    const unit = searchParams.get('unit');
-    const category = searchParams.get('category');
-    const seller = searchParams.get('seller');
+    const title = searchParams?.get('title');
+    const image = searchParams?.get('image');
+    const price = searchParams?.get('price');
+    const quantity = searchParams?.get('quantity') || '1';
+    const unit = searchParams?.get('unit');
+    const category = searchParams?.get('category');
+    const seller = searchParams?.get('seller');
     if (title && price) {
       setCart([
         {
@@ -173,8 +173,8 @@ export default function CheckoutPage() {
 
   // Totals
   const itemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const itemsTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const shipping = 0;
+  const itemsTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const shipping: number = 0;
   const tax = Math.round(itemsTotal * 0.02);
   const total = itemsTotal + shipping + tax;
 
@@ -185,8 +185,12 @@ export default function CheckoutPage() {
   };
   const handleAddAddress = (e: any) => {
     e.preventDefault();
-    if (!newAddress.name || !newAddress.address || !newAddress.city || !newAddress.state || !newAddress.pincode) return;
-    const addr = { ...newAddress };
+    if (!newAddress.name || !newAddress.phone || !newAddress.address || !newAddress.city || !newAddress.state || !newAddress.pincode) return;
+    const addr = { 
+      ...newAddress, 
+      id: Date.now().toString(),
+      isDefault: addresses.length === 0
+    };
     setAddresses(prev => [...prev, addr]);
     setSelectedAddress(addr);
     setNewAddress({ name: '', phone: '', address: '', city: '', state: '', pincode: '' });
@@ -283,18 +287,19 @@ export default function CheckoutPage() {
                 <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
                   {addresses.map((addr, i) => (
                     <div key={i} className={`p-3 rounded border cursor-pointer ${selectedAddress === addr ? 'border-green-600 bg-green-50' : 'border-green-100 hover:bg-green-50'}`} onClick={() => handleSelectAddress(addr)}>
-                      <div className="font-semibold text-green-900">{addr.name}</div>
+                      <div className="font-semibold text-green-900">{addr.name} <span className="text-green-700 text-xs ml-2">{addr.phone}</span></div>
                       <div className="text-green-800 text-sm">{addr.address}, {addr.city}, {addr.state}, {addr.pincode}</div>
                     </div>
                   ))}
                 </div>
                 <form onSubmit={handleAddAddress} className="space-y-2">
                   <div className="font-semibold text-green-700">Add New Address</div>
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm" placeholder="Name" value={newAddress.name} onChange={e => setNewAddress(a => ({ ...a, name: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm" placeholder="Address" value={newAddress.address} onChange={e => setNewAddress(a => ({ ...a, address: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm" placeholder="City" value={newAddress.city} onChange={e => setNewAddress(a => ({ ...a, city: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm" placeholder="State" value={newAddress.state} onChange={e => setNewAddress(a => ({ ...a, state: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm" placeholder="ZIP Code" value={newAddress.pincode} onChange={e => setNewAddress(a => ({ ...a, pincode: e.target.value }))} />
+                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="Name" value={newAddress.name} onChange={e => setNewAddress(a => ({ ...a, name: e.target.value }))} />
+                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="Mobile No" value={newAddress.phone} onChange={e => setNewAddress(a => ({ ...a, phone: e.target.value }))} />
+                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="Address" value={newAddress.address} onChange={e => setNewAddress(a => ({ ...a, address: e.target.value }))} />
+                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="City" value={newAddress.city} onChange={e => setNewAddress(a => ({ ...a, city: e.target.value }))} />
+                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="State" value={newAddress.state} onChange={e => setNewAddress(a => ({ ...a, state: e.target.value }))} />
+                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="ZIP Code" value={newAddress.pincode} onChange={e => setNewAddress(a => ({ ...a, pincode: e.target.value }))} />
                   <div className="flex gap-2 mt-2">
                     <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded font-semibold text-sm hover:bg-green-700 transition">Add Address</button>
                     <button type="button" className="bg-gray-200 text-green-900 px-4 py-2 rounded font-semibold text-sm hover:bg-gray-300 transition" onClick={() => setShowAddAddress(false)}>Cancel</button>
@@ -322,7 +327,7 @@ export default function CheckoutPage() {
           <button
             className="w-full mt-6 bg-green-600 text-white py-3 rounded-full font-bold text-base hover:bg-green-700 transition btn-primary disabled:opacity-60"
             onClick={handlePlaceOrder}
-            disabled={orderLoading || orderSuccess}
+            disabled={orderLoading || orderSuccess || !selectedAddress}
           >
             {orderLoading ? 'Placing order...' : orderSuccess ? 'Order Placed!' : 'Place Order'}
           </button>

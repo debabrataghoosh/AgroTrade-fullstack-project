@@ -4,12 +4,14 @@ import Order from '@/lib/models/Order';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
     
-    if (!params.id) {
+    const { id } = await params;
+    
+    if (!id) {
       return NextResponse.json({ error: 'Order ID required' }, { status: 400 });
     }
 
@@ -20,7 +22,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Status is required' }, { status: 400 });
     }
 
-    const order = await Order.findById(params.id);
+    const order = await Order.findById(id);
     
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });

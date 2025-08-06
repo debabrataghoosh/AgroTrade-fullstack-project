@@ -28,7 +28,7 @@ export default function RoleProtection({
       }
       
       // Check if user has required role
-      const userRole = user?.publicMetadata?.role;
+      const userRole = user?.publicMetadata?.role as string;
       if (!userRole || !allowedRoles.includes(userRole)) {
         // Redirect to specified route or show access denied
         router.push(redirectTo);
