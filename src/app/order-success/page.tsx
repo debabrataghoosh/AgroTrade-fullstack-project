@@ -2,8 +2,9 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaCheckCircle, FaHome, FaShoppingBag, FaEnvelope } from 'react-icons/fa';
+import { Suspense } from 'react';
 
-export default function OrderSuccessPage() {
+function OrderSuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams?.get('session_id');
 
@@ -81,5 +82,20 @@ export default function OrderSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OrderSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-green-100 to-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading order details...</p>
+        </div>
+      </div>
+    }>
+      <OrderSuccessContent />
+    </Suspense>
   );
 }
