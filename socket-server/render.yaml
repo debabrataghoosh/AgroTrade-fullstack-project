@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: agrotrade-socket-server
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ALLOWED_ORIGINS
+        value: https://agrotrade-ibipx3l6s-debabrata-ghoshs-projects.vercel.app,https://agrotrade-blush.vercel.app,http://localhost:3000
