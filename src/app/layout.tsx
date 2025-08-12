@@ -17,13 +17,12 @@ import { Inter } from 'next/font/google';
 import { UserButton } from '@clerk/nextjs';
 import { SocketProvider } from "@/app/components/SocketProvider";
 
-const poppins = Poppins({ subsets: ["latin"], weight: ["400", "600", "700"] });
+const poppinsFont = Poppins({ subsets: ["latin"], weight: ["400", "600", "700"] }); // Renamed poppins to poppinsFont
 const inter = Inter({ subsets: ['latin'] });
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   // Dropdown state for categories
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const [activeAllSub, setActiveAllSub] = useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
@@ -138,19 +137,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
   ];
 
-  // Map for subcategories of each main category (for All mega menu)
-  const allSubMap: Record<string, string[]> = {
-    "Cereal Grains": ["Rice", "Wheat", "Maize (Corn)", "Barley", "Millets (Bajra, Jowar, Ragi)"],
-    "Pulses": ["Chickpeas (Chana)", "Pigeon Peas (Toor/Arhar Dal)", "Lentils (Masoor Dal)", "Urad Dal (Black Gram)", "Moong Dal (Green Gram)"],
-    "Oilseeds": ["Mustard", "Groundnut (Peanut)", "Soybean", "Sesame (Til)", "Sunflower Seeds"],
-    "Vegetables": ["Tomato", "Potato", "Onion", "Brinjal", "Cauliflower, Cabbage, Carrot", "Green Chilli"],
-    "Fruits": ["Mango", "Banana", "Apple", "Guava", "Pomegranate", "Papaya"],
-    "Spices & Herbs": ["Turmeric", "Coriander", "Cumin", "Chilli", "Ginger, Garlic", "Fenugreek (Methi)"],
-    "Plantation & Commercial": ["Tea", "Coffee", "Coconut", "Rubber", "Sugarcane", "Cotton"],
-    "Organic / Specialty": ["Organic Rice / Wheat", "Black Rice / Red Rice", "Quinoa", "Buckwheat", "Medicinal Plants (e.g., Aloe Vera, Ashwagandha)"],
-    "Sell Byproduct": ["Crop residues", "Animal feed", "Compost / Fertilizer"]
-  };
-
   return (
     <ClerkProvider>
       <SocketProvider>
@@ -210,7 +196,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                           }}
                         />
                         <motion.button
-                          className="bg-green-500 hover:bg-green-700 px-4 flex items-center justify-center transition-colors rounded-full"
+                          className="bg-green-500 text-white px-4 flex items-center justify-center transition-colors rounded-full"
                           onClick={() => {
                             if (search.trim()) {
                               router.push(`/products?search=${encodeURIComponent(search.trim())}`);
@@ -219,7 +205,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                         </motion.button>
                       </div>
                     </div>
@@ -306,7 +292,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                               }}
                             />
                             <button
-                              className="bg-green-500 px-4 py-2"
+                              className="bg-green-500 text-white px-4 py-2"
                               onClick={() => {
                                 if (search.trim()) {
                                   router.push(`/products?search=${encodeURIComponent(search.trim())}`);
@@ -314,7 +300,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                                 }
                               }}
                             >
-                              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
                             </button>
                           </div>
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,11 +26,10 @@ function DropdownPortal({ children }: { children: React.ReactNode }) {
 export default function Categories({ categories, onCategorySelect }: CategoriesProps) {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
   React.useEffect(() => {
-    function handleClick(e: MouseEvent) {
+    function handleClick() { // Removed _e
       if (openDropdown) setOpenDropdown(null);
     }
     document.addEventListener('click', handleClick);

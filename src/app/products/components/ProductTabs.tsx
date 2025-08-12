@@ -1,15 +1,34 @@
 "use client";
 import React, { useState } from "react";
 
-export default function ProductTabs({ 
-  product, 
-  reviews, 
-  avgRating, 
-  totalReviews, 
-  starCounts 
-}: { 
-  product: any;
-  reviews: any[];
+interface Product {
+  _id: string;
+  title: string;
+  image: string;
+  price: number;
+  seller?: { name: string; email: string; role: string };
+  description?: string;
+  category?: string;
+}
+
+interface Review {
+  avatar: string;
+  user: string;
+  rating: number;
+  text: string;
+  likes: number;
+  dislikes: number;
+}
+
+export default function ProductTabs({
+  product,
+  reviews,
+  avgRating,
+  totalReviews,
+  starCounts,
+}: {
+  product: Product;
+  reviews: Review[];
   avgRating: number;
   totalReviews: number;
   starCounts: number[];
@@ -34,7 +53,8 @@ export default function ProductTabs({
       </div>
       {selectedTab === "details" && (
         <div className="bg-white rounded-2xl shadow p-6 text-gray-700 text-base leading-relaxed">
-          <div className="mb-2"><span className="font-bold">Description:</span> {product.description || "No description provided."}</div>
+          <h2 className="text-xl font-bold mb-2">Product Details</h2>
+          <div>{product.description || "No description provided."}</div>
           <div><span className="font-bold">Category:</span> {product.category}</div>
         </div>
       )}
@@ -58,7 +78,7 @@ export default function ProductTabs({
           </div>
           {/* Review list */}
           <div className="space-y-4">
-            {reviews.map((r: any, i: number) => (
+            {reviews.map((r: Review, i: number) => (
               <div key={i} className="flex items-start gap-4">
                 <img src={r.avatar} alt={r.user} className="w-10 h-10 rounded-full border" />
                 <div>
@@ -77,4 +97,4 @@ export default function ProductTabs({
       )}
     </>
   );
-} 
+}

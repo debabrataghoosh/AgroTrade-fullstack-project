@@ -6,7 +6,15 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 
-export default function SuggestedProductsSlider({ suggested }: { suggested: any[] }) {
+interface Product {
+  _id: string;
+  title: string;
+  image: string;
+  price: number;
+  seller?: { name: string; email: string; role: string };
+}
+
+export default function SuggestedProductsSlider({ suggested }: { suggested: Product[] }) {
   return (
     <div className="w-full max-w-6xl mt-8">
       <div className="flex items-center justify-between mb-4">
@@ -19,7 +27,7 @@ export default function SuggestedProductsSlider({ suggested }: { suggested: any[
         spaceBetween={16}
         className="suggested-products-swiper"
       >
-        {suggested.map((prod: any) => (
+        {suggested.map((prod: Product) => (
           <SwiperSlide key={prod._id} style={{ width: 240, flexShrink: 0 }}>
             <ProductCard {...prod} />
           </SwiperSlide>
@@ -27,4 +35,4 @@ export default function SuggestedProductsSlider({ suggested }: { suggested: any[
       </Swiper>
     </div>
   );
-} 
+}

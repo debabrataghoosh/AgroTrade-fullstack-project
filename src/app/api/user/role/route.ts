@@ -1,10 +1,10 @@
+
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from '@clerk/nextjs/server';
-import { users } from '@clerk/clerk-sdk-node';
+import { getAuth, clerkClient } from '@clerk/nextjs/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await getAuth(req);
+    const { userId } = getAuth(req);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -18,7 +18,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Update user's public metadata in Clerk
-    await users.updateUser(userId, {
+    const client = await clerkClient();
+    await client.users.updateUserMetadata(userId, {
       publicMetadata: { role }
     });
 
@@ -27,4 +28,4 @@ export async function POST(req: NextRequest) {
     console.error('Error updating user role:', error);
     return NextResponse.json({ error: 'Failed to update role' }, { status: 500 });
   }
-} 
+}

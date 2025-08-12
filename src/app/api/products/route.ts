@@ -2,25 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
 import User from '@/lib/models/User';
-import { getAuth } from '@clerk/nextjs/server';
-import { users } from '@clerk/clerk-sdk-node';
-
-interface ProductData {
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  subcategory: string;
-  quantity: number;
-  unit: string;
-  image: string;
-  sellerEmail: string;
-}
+import { getAuth, currentUser } from '@clerk/nextjs/server';
 
 export async function GET(request: NextRequest) {
   await dbConnect();
   const { searchParams } = request.nextUrl;
-  const filter: any = {};
+  const filter: { category?: string; subcategory?: string; live?: boolean; title?: RegExp } = {};
   const id = searchParams.get('id');
   const category = searchParams.get('category');
   const subcategory = searchParams.get('subcategory');
@@ -39,7 +26,7 @@ export async function GET(request: NextRequest) {
     const products = await Product.find({ title: { $regex: q, $options: 'i' }, live: true })
       .limit(8)
       .select('title -_id');
-    const suggestions = products.map((p: any) => p.title);
+    const suggestions = products.map((p: { title: string }) => p.title);
     return NextResponse.json(suggestions);
   }
   
@@ -70,15 +57,11 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'You must be logged in to add products' }, { status: 403 });
     }
-    let email = null;
-    let user = null;
-    try {
-      user = await users.getUser(userId);
-      email = user.emailAddresses[0]?.emailAddress;
-    } catch (e) {
-      console.error('Clerk fetch error:', e, 'userId:', userId, 'CLERK_SECRET_KEY:', process.env.CLERK_SECRET_KEY ? 'set' : 'not set');
-      return NextResponse.json({ error: 'Could not fetch user from Clerk', details: String(e) }, { status: 500 });
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Could not fetch user from Clerk' }, { status: 500 });
     }
+    const email = user.emailAddresses[0]?.emailAddress;
     if (!email) {
       return NextResponse.json({ error: 'No email found for user' }, { status: 400 });
     }
@@ -172,4 +155,4 @@ export async function DELETE(req: NextRequest) {
     console.error('API /api/products DELETE error:', err);
     return NextResponse.json({ error: 'Internal server error', details: String(err) }, { status: 500 });
   }
-} 
+}

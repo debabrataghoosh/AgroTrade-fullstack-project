@@ -2,10 +2,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import io from "socket.io-client";
+import io, { Socket } from "socket.io-client";
 import React from "react";
 
-let socket: any;
+let socket: Socket;
+
+interface Message {
+  roomId: string;
+  sender: string;
+  content: string;
+  createdAt: string;
+  buyer: string;
+  seller: string;
+}
+
+interface Product {
+  _id: string;
+  title: string;
+  image: string;
+  price: number;
+  seller?: { name: string; email: string; role: string };
+}
 
 function parseRoomId(roomId: string) {
   const [product, buyer, seller] = (roomId || '').split('--');
@@ -17,11 +34,11 @@ export default function ChatPage() {
   const id = params?.id as string; // id = chat room id (e.g., productId--buyerEmail--sellerEmail)
   const router = useRouter();
   const { user, isSignedIn } = useUser();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Parse productId, sellerEmail from roomId
@@ -45,7 +62,7 @@ export default function ChatPage() {
     socket.emit("join", id);
     // Also join notification room for this user
     socket.emit("join", user.primaryEmailAddress.emailAddress);
-    socket.on("message", (msg: any) => {
+    socket.on("message", (msg: Message) => {
       setMessages((prev) => [...prev, msg]);
     });
     fetchMessages();
@@ -70,7 +87,7 @@ export default function ChatPage() {
       } else {
         setError("Failed to load messages.");
       }
-    } catch (err) {
+    } catch (error) {
       setError("Failed to load messages.");
     }
     setLoading(false);
@@ -80,7 +97,7 @@ export default function ChatPage() {
     if (!input.trim() || !user?.primaryEmailAddress) return;
     setError("");
     const { buyer, seller } = parseRoomId(id);
-    const msg = {
+    const msg: Message = {
       roomId: id,
       sender: user.primaryEmailAddress.emailAddress,
       content: input,
@@ -100,7 +117,7 @@ export default function ChatPage() {
       if (!res.ok) {
         setError("Failed to send message.");
       }
-    } catch (err) {
+    } catch (error) {
       setError("Failed to send message.");
     }
   };
@@ -136,6 +153,8 @@ export default function ChatPage() {
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
           {loading ? (
             <div className="text-gray-500">Loading messages...</div>
+          ) : error ? (
+            <div className="text-red-500">{error}</div>
           ) : messages.length === 0 ? (
             <div className="text-gray-400">No messages yet. Start the conversation!</div>
           ) : (
@@ -174,4 +193,4 @@ export default function ChatPage() {
       </div>
     </div>
   );
-} 
+}

@@ -1,8 +1,19 @@
 import React, { useState } from "react";
 import Image from "next/image";
 
+interface Chat {
+  roomId: string;
+  productTitle: string;
+  sellerEmail: string;
+  buyerEmail: string;
+  lastMessage: string;
+  createdAt: string;
+  productImage: string;
+  lastMessageSender: string;
+}
+
 interface ChatSidebarProps {
-  chats: any[];
+  chats: Chat[];
   selectedRoomId: string | null;
   onSelectChat: (roomId: string) => void;
   searchPlaceholder?: string;
@@ -11,7 +22,7 @@ interface ChatSidebarProps {
   filters?: string[];
   activeFilter?: string;
   setActiveFilter?: (f: string) => void;
-  isChatUnread?: (chat: any) => boolean;
+  isChatUnread?: (chat: Chat) => boolean;
 }
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -102,4 +113,4 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   );
 };
 
-export default ChatSidebar; 
+export default ChatSidebar;

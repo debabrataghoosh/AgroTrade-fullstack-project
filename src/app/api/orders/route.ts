@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 
+interface OrderItem {
+  productId?: string;
+  title?: string;
+  image?: string;
+  price?: number;
+  quantity?: number;
+  unit?: string;
+  category?: string;
+  seller: string;
+}
+
 export async function POST(req: NextRequest) {
   await dbConnect();
   const data = await req.json();
@@ -32,7 +43,7 @@ export async function GET(req: NextRequest) {
   
   const orders = await Order.find(query).sort({ createdAt: -1 });
   console.log('Found orders:', orders.length);
-  console.log('Sample order items:', orders.slice(0, 2).map(o => o.items.map((i: any) => ({ title: i.title, seller: i.seller }))));
+  console.log('Sample order items:', orders.slice(0, 2).map(o => o.items.map((i: OrderItem) => ({ title: i.title, seller: i.seller }))));
   
   return NextResponse.json(orders);
-} 
+}

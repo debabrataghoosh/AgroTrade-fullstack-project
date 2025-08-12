@@ -1,7 +1,6 @@
 "use client";
-import Link from 'next/link';
 import Image from 'next/image';
-import { useUser, UserButton } from '@clerk/nextjs';
+import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import AOS from 'aos';
@@ -176,4 +175,4 @@ export default function BecomeSellerPage() {
       </motion.section>
     </main>
   );
-} 
+}

@@ -4,15 +4,41 @@ import { useUser } from "@clerk/nextjs";
 import ChatLayout from "@/app/components/ChatLayout";
 import Image from "next/image";
 
+interface Message {
+  roomId: string;
+  sender: string;
+  content: string;
+  createdAt: string;
+  buyer: string;
+  seller: string;
+}
+
+interface Chat {
+  roomId: string;
+  productTitle: string;
+  sellerEmail: string;
+  buyerEmail: string;
+  lastMessage: string;
+  createdAt: string;
+  productImage: string;
+  lastMessageSender: string;
+}
+
+interface MockMessages {
+  [roomId: string]: Message[];
+}
+
 // Mock data for testing UI (structure matches seller page)
-const mockChats = [
+const mockChats: Chat[] = [
   {
     roomId: "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com",
     productTitle: "Apple",
     productImage: "/uploads/1751568540482-10998932.png",
     sellerEmail: "agrotrade804@gmail.com",
     lastMessage: "Hi, I'm interested in your Apple. Is it still available?",
-    createdAt: new Date(Date.now() - 3600000)
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    buyerEmail: "testbuyer@example.com",
+    lastMessageSender: "testbuyer@example.com",
   },
   {
     roomId: "6866d22e941ddb9ed76ac422--testbuyer@example.com--agrotrade804@gmail.com",
@@ -20,7 +46,9 @@ const mockChats = [
     productImage: "/uploads/1751568909409-11479892.png",
     sellerEmail: "agrotrade804@gmail.com",
     lastMessage: "What's the best price you can offer for 5kg?",
-    createdAt: new Date(Date.now() - 1800000)
+    createdAt: new Date(Date.now() - 1800000).toISOString(),
+    buyerEmail: "testbuyer@example.com",
+    lastMessageSender: "testbuyer@example.com",
   },
   {
     roomId: "6866d267941ddb9ed76ac431--testbuyer@example.com--agrotrade804@gmail.com",
@@ -28,15 +56,17 @@ const mockChats = [
     productImage: "/uploads/1751568974553-bananas-white-background.jpg",
     sellerEmail: "agrotrade804@gmail.com",
     lastMessage: "Do you have organic bananas?",
-    createdAt: new Date(Date.now() - 900000)
+    createdAt: new Date(Date.now() - 900000).toISOString(),
+    buyerEmail: "testbuyer@example.com",
+    lastMessageSender: "testbuyer@example.com",
   }
 ];
 
-const mockMessages = {
+const mockMessages: MockMessages = {
   "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com": [
-    { sender: "testbuyer@example.com", content: "Hi, I'm interested in your Apple. Is it still available?", createdAt: new Date(Date.now() - 3600000) },
-    { sender: "agrotrade804@gmail.com", content: "Yes, it's available!", createdAt: new Date(Date.now() - 3500000) },
-    { sender: "testbuyer@example.com", content: "Can you deliver 2kg?", createdAt: new Date(Date.now() - 3400000) },
+    { roomId: "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com", sender: "testbuyer@example.com", content: "Hi, I'm interested in your Apple. Is it still available?", createdAt: new Date(Date.now() - 3600000).toISOString(), buyer: "testbuyer@example.com", seller: "agrotrade804@gmail.com" },
+    { roomId: "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com", sender: "agrotrade804@gmail.com", content: "Yes, it's available!", createdAt: new Date(Date.now() - 3500000).toISOString(), buyer: "testbuyer@example.com", seller: "agrotrade804@gmail.com" },
+    { roomId: "6866d0bc941ddb9ed76ac415--testbuyer@example.com--agrotrade804@gmail.com", sender: "testbuyer@example.com", content: "Can you deliver 2kg?", createdAt: new Date(Date.now() - 3400000).toISOString(), buyer: "testbuyer@example.com", seller: "agrotrade804@gmail.com" },
   ],
   "6866d22e941ddb9ed76ac422--testbuyer@example.com--agrotrade804@gmail.com": [],
   "6866d267941ddb9ed76ac431--testbuyer@example.com--agrotrade804@gmail.com": [],
@@ -44,7 +74,7 @@ const mockMessages = {
 
 export default function BuyerChatPage() {
   const { user, isSignedIn, isLoaded } = useUser();
-  const [chats, setChats] = useState<any[]>([]);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -133,7 +163,7 @@ export default function BuyerChatPage() {
 
   // Main chat area with OLX-style UI (matches seller page)
   const selectedChat = chats.find((c) => c.roomId === selectedRoomId);
-  const messages = selectedRoomId ? (mockMessages as any)[selectedRoomId] || [] : [];
+  const messages = selectedRoomId ? mockMessages[selectedRoomId] || [] : [];
 
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -163,7 +193,7 @@ export default function BuyerChatPage() {
         )}
         {selectedRoomId && messages.length > 0 && (
           <>
-            {messages.map((msg: any, i: number) => (
+            {messages.map((msg: Message, i: number) => (
               <div key={i} className={`flex ${msg.sender === user?.primaryEmailAddress?.emailAddress ? "justify-end" : "justify-start"}`}>
                 <div className={`px-4 py-2 rounded-2xl max-w-xs text-black ${msg.sender === user?.primaryEmailAddress?.emailAddress ? "bg-blue-100" : "bg-gray-100"}`}>
                   <div className="text-sm">{msg.content}</div>
@@ -202,4 +232,4 @@ export default function BuyerChatPage() {
   );
 
   return <ChatLayout sidebar={sidebar}>{mainArea}</ChatLayout>;
-} 
+}

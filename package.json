@@ -1,5 +1,5 @@
 {
-  "name": "olx",
+  "name": "AgroTrade",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,11 +11,12 @@
     "dev:all": "node dev-script.js"
   },
   "dependencies": {
-    "@clerk/clerk-sdk-node": "^4.13.23",
+    "@clerk/backend": "^2.7.0",
     "@clerk/nextjs": "^6.23.2",
     "@headlessui/react": "^2.2.4",
     "@heroicons/react": "^2.2.0",
     "@next-auth/mongodb-adapter": "^1.1.3",
+    "@stripe/stripe-js": "^7.8.0",
     "aos": "^2.3.4",
     "axios": "^1.10.0",
     "bcryptjs": "^3.0.2",
@@ -33,13 +34,14 @@
     "react-icons": "^5.5.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "stripe": "^18.3.0",
+    "stripe": "^18.4.0",
     "swiper": "^11.2.10"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
     "@types/aos": "^3.0.7",
+    "@types/formidable": "^3.4.5",
     "@types/node": "^20.19.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",

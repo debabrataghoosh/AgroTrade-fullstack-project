@@ -16,7 +16,7 @@ const sidebarLinks = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { isSignedIn, isLoaded } = useUser();
+  const { } = useUser(); // Removed isSignedIn, isLoaded
   return (
     <aside className="w-56 bg-white border-r border-green-100 flex flex-col py-8 px-4 relative min-h-screen">
       <div className="text-2xl font-bold text-green-700 mb-8">Seller Portal</div>

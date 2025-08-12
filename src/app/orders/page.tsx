@@ -14,11 +14,22 @@ interface OrderItem {
   seller: string;
 }
 
+interface Address {
+  id: string;
+  name: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  isDefault: boolean;
+}
+
 interface Order {
   _id: string;
   userEmail: string;
   items: OrderItem[];
-  address: any;
+  address: Address;
   status: string;
   createdAt: string;
 }
@@ -59,7 +70,7 @@ export default function OrdersPage() {
       if (!response.ok) throw new Error("Failed to fetch orders");
       const data = await response.json();
       setOrders(data);
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to load orders");
     } finally {
       setLoading(false);
@@ -137,4 +148,4 @@ export default function OrdersPage() {
       </div>
     </div>
   );
-} 
+}

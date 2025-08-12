@@ -4,7 +4,7 @@ import Image from "next/image";
 import clsx from "clsx";
 
 export default function SellCropsButton({ className = "" }: { className?: string }) {
-  const { isSignedIn } = useAuth();
+  const { } = useAuth(); // Removed isSignedIn
   const router = useRouter();
 
   return (
@@ -21,4 +21,4 @@ export default function SellCropsButton({ className = "" }: { className?: string
       Become Seller
     </button>
   );
-} 
+}

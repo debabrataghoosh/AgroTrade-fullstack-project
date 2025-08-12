@@ -16,8 +16,10 @@ const categories = [
   { label: "Sell Byproduct", sub: ["Crop residues", "Animal feed", "Compost / Fertilizer"] },
 ];
 
+const tagOptions = ["Organic", "Fresh", "Bulk", "Export", "Local", "Premium", "Wholesale", "Retail"];
+
 export default function AddProductPage() {
-  const { user, isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded } = useUser(); // Removed user
   const router = useRouter();
   const [form, setForm] = useState({
     title: "",
@@ -82,11 +84,15 @@ export default function AddProductPage() {
           method: "POST",
           body: formData,
         });
-        const data = await res.json();
+        const data = await await res.json();
         if (!res.ok) throw new Error(data.error || "Upload failed");
         setForm(f => ({ ...f, image: data.url }));
-      } catch (err: any) {
-        setError(err.message || "Image upload failed");
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message || "Image upload failed");
+        } else {
+          setError("Image upload failed");
+        }
         setForm(f => ({ ...f, image: "" }));
         setImagePreview(null);
       } finally {
@@ -113,8 +119,12 @@ export default function AddProductPage() {
           if (!res.ok) throw new Error(data.error || "Upload failed");
           setForm(f => ({ ...f, image: data.url }));
         })
-        .catch((err) => {
-          setError(err.message || "Image upload failed");
+        .catch((err: unknown) => {
+          if (err instanceof Error) {
+            setError(err.message || "Image upload failed");
+          } else {
+            setError("Image upload failed");
+          }
           setForm(f => ({ ...f, image: "" }));
           setImagePreview(null);
         })
@@ -131,7 +141,6 @@ export default function AddProductPage() {
     setSuccess("");
     // Robust validation
     const trimmedTitle = form.title.trim();
-    const trimmedDescription = form.description.trim();
     const priceNumber = Number(form.price);
     // Validate subcategory matches category
     const catObj = categories.find(cat => cat.label === form.category);
@@ -154,7 +163,7 @@ export default function AddProductPage() {
         },
         body: JSON.stringify({
           title: trimmedTitle,
-          description: trimmedDescription,
+          description: form.description.trim(),
           price: priceNumber,
           quantity: Number(form.quantity),
           unit: form.unit.trim(),
@@ -167,8 +176,12 @@ export default function AddProductPage() {
       if (!res.ok) throw new Error(data.error || "Failed to add product");
       setSuccess("Product added successfully!");
       setTimeout(() => router.push("/seller/products"), 1000);
-    } catch (err: any) {
-      setError((err.message || "Something went wrong") + "\nForm state: " + JSON.stringify(form));
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError((err.message || "Something went wrong") + "\nForm state: " + JSON.stringify(form));
+      } else {
+        setError("Something went wrong");
+      }
     } finally {
       setLoading(false);
     }
@@ -270,7 +283,7 @@ export default function AddProductPage() {
             
             {error && error.toLowerCase().includes('image') && (
               <motion.div 
-                className="text-red-600 text-sm mt-4 p-3 bg-red-50 rounded-lg border border-red-200"
+                className="text-red-600 text-sm p-4 bg-red-50 rounded-lg border border-red-200"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
@@ -498,4 +511,4 @@ export default function AddProductPage() {
       </div>
     </div>
   );
-} 
+}

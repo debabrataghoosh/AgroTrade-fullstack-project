@@ -1,15 +1,33 @@
 "use client";
 import { useState } from "react";
 
-export default function ProductTabs({ 
-  product, 
-  reviews, 
-  avgRating, 
-  totalReviews, 
-  starCounts 
-}: { 
-  product: any;
-  reviews: any[];
+interface Product {
+  _id: string;
+  title: string;
+  image: string;
+  price: number;
+  description?: string;
+  seller?: { name: string; email: string; role: string };
+}
+
+interface Review {
+  avatar: string;
+  user: string;
+  rating: number;
+  text: string;
+  likes: number;
+  dislikes: number;
+}
+
+export default function ProductTabs({
+  product,
+  reviews,
+  avgRating,
+  totalReviews,
+  starCounts,
+}: {
+  product: Product;
+  reviews: Review[];
   avgRating: number;
   totalReviews: number;
   starCounts: number[];
@@ -39,7 +57,7 @@ export default function ProductTabs({
               <span className="text-gray-600">({totalReviews} reviews)</span>
             </div>
             <div className="flex-1 flex flex-col gap-1">
-              {[5,4,3,2,1].map((star, i) => (
+              {[5,4,3,2,1].map((star, _i) => ( // Changed i to _i
                 <div key={star} className="flex items-center gap-2">
                   <span className="w-6 text-gray-700">{star}★</span>
                   <div className="flex-1 bg-gray-200 rounded h-2 overflow-hidden">
@@ -52,7 +70,7 @@ export default function ProductTabs({
           </div>
           {/* Review list */}
           <div className="divide-y">
-            {reviews.map((r: any, i: number) => (
+            {reviews.map((r: Review, i: number) => (
               <div key={i} className="flex gap-4 py-4">
                 <img src={r.avatar} alt={r.user} className="w-12 h-12 rounded-full border" />
                 <div className="flex-1">
@@ -77,4 +95,4 @@ export default function ProductTabs({
       )}
     </div>
   );
-} 
+}

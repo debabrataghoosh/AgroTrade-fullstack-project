@@ -1,13 +1,9 @@
 import { dbConnect } from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
-import User from '@/lib/models/User';
-import Image from 'next/image';
 import ProductTabs from '../components/ProductTabs';
 import Link from 'next/link';
 import ChatButton from './ChatButton';
-import { FaUser, FaTag, FaRegCommentDots, FaRegHeart, FaShareAlt, FaCheckCircle } from 'react-icons/fa';
-import ProductCard from '../../components/ProductCard';
-import { Suspense } from 'react';
+import { FaUser, FaTag, FaRegHeart, FaShareAlt, FaCheckCircle } from 'react-icons/fa';
 import SuggestedProductsSlider from './SuggestedProductsSlider';
 
 // Server component: receives params
@@ -136,4 +132,4 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       </div>
     </main>
   );
-} 
+}

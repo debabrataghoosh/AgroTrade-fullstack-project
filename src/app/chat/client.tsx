@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useUser } from "@clerk/nextjs";
-import ChatLayout from "@/app/components/ChatLayout";
+import ChatLayout from "../components/ChatLayout";
 import Image from "next/image";
-import io from "socket.io-client";
-import ChatSidebar from "@/app/components/ChatSidebar";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSocket } from "@/app/components/SocketProvider";
+import ChatSidebar from "../components/ChatSidebar";
 
 interface Message {
   roomId: string;
@@ -40,7 +40,7 @@ function parseRoomId(roomId: string) {
   return { product, buyer, seller };
 }
 
-export default function SellerChatPage() {
+export default function ChatClientPage() {
   const { user, isSignedIn, isLoaded } = useUser();
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,11 @@ export default function SellerChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [input, setInput] = useState("");
+  const [newChatProduct, setNewChatProduct] = useState<Product | null>(null);
+  const [newChatLoading, setNewChatLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [activeFilter, setActiveFilter] = useState('All');
   const filters = ['All', 'Unread'];
   const [readChats, setReadChats] = useState<string[]>([]);
@@ -58,17 +62,48 @@ export default function SellerChatPage() {
   const suggestedOffers = ["20000", "19000", "18000", "17000", "16000"];
   const socket = useSocket();
 
+  // Auto-select chat if roomId is in query string
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || !user?.primaryEmailAddress) return;
-    fetch(`/api/seller-chats?sellerEmail=${encodeURIComponent(user.primaryEmailAddress.emailAddress)}`)
+    const roomId = searchParams?.get("roomId");
+    if (roomId) setSelectedRoomId(roomId);
+  }, [searchParams]);
+
+  // If selectedRoomId is not in chats, fetch product info for new chat
+  useEffect(() => {
+    if (!selectedRoomId || chats.some(c => c.roomId === selectedRoomId)) {
+      setNewChatProduct(null);
+      return;
+    }
+    // Parse productId from roomId
+    const [productId] = selectedRoomId.split("--");
+    if (!productId) return;
+    setNewChatLoading(true);
+    fetch(`/api/products?id=${productId}`)
       .then(res => res.json())
-      .then(data => {
-        setChats(data);
-      })
-      .catch(() => {
-        setChats([]);
-      })
-      .finally(() => setLoading(false));
+      .then(data => setNewChatProduct(data))
+      .catch(() => setNewChatProduct(null))
+      .finally(() => setNewChatLoading(false));
+  }, [selectedRoomId, chats]);
+
+  // Helper to fetch chat list
+  const fetchChats = async () => {
+    if (!isLoaded || !isSignedIn || !user?.primaryEmailAddress) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/buyer-chats?buyerEmail=${encodeURIComponent(user.primaryEmailAddress.emailAddress)}`);
+      const data = await res.json();
+      setChats(data);
+    } catch (_err) { // Changed err to _err
+      setChats([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch chat list
+  useEffect(() => {
+    fetchChats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded, isSignedIn, user]);
 
   // Fetch messages for selected chat
@@ -85,46 +120,6 @@ export default function SellerChatPage() {
       .finally(() => setMessagesLoading(false));
   }, [selectedRoomId, isSignedIn, user]);
 
-  // Socket.io for real-time updates
-  useEffect(() => {
-    if (!selectedRoomId || !isSignedIn || !user?.primaryEmailAddress || !socket) return;
-    socket.emit("join", selectedRoomId);
-    socket.emit("join", user.primaryEmailAddress.emailAddress);
-    const messageListener = (msg: Message) => {
-      if (msg.roomId === selectedRoomId) {
-        setMessages((prev) => [...prev, msg]);
-      }
-    };
-    socket.on("message", messageListener);
-    return () => {
-      socket.off("message", messageListener);
-    };
-  }, [selectedRoomId, isSignedIn, user, socket]);
-
-  // Listen for new-message event
-  useEffect(() => {
-    if (!isSignedIn || !user?.primaryEmailAddress || !socket) return;
-    socket.emit("join", user.primaryEmailAddress.emailAddress);
-    const newMessageListener = (msg: Message) => {
-      if (msg.roomId === selectedRoomId) {
-        setMessages((prev) => [...prev, msg]);
-      }
-    };
-    socket.on("new-message", newMessageListener);
-    return () => {
-      socket.off("new-message", newMessageListener);
-    };
-  }, [selectedRoomId, isSignedIn, user, socket]);
-
-  // Cleanup socket on unmount
-  useEffect(() => {
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, []);
-
   // Scroll to bottom on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -132,8 +127,8 @@ export default function SellerChatPage() {
 
   // Filter chats by search
   const filteredChats = chats.filter(chat =>
-    chat.productTitle.toLowerCase().includes(search.toLowerCase()) ||
-    chat.buyerEmail.toLowerCase().includes(search.toLowerCase())
+    chat.productTitle?.toLowerCase().includes(search.toLowerCase()) ||
+    chat.sellerEmail?.toLowerCase().includes(search.toLowerCase())
   );
 
   // When a chat is selected, mark it as read
@@ -149,7 +144,7 @@ export default function SellerChatPage() {
     if (chat.lastMessageSender) {
       return chat.lastMessageSender !== user.primaryEmailAddress.emailAddress;
     }
-    return Boolean(chat.lastMessage && chat.buyerEmail !== user.primaryEmailAddress.emailAddress);
+    return Boolean(chat.lastMessage && chat.sellerEmail !== user.primaryEmailAddress.emailAddress);
   }
 
   // Filter chats by active filter (useMemo to update immediately when readChats changes)
@@ -163,10 +158,10 @@ export default function SellerChatPage() {
   // Sidebar for chat list (now using ChatSidebar)
   const sidebar = (
     <ChatSidebar
-      chats={chats}
+      chats={chatsToShow} // Changed chats to chatsToShow
       selectedRoomId={selectedRoomId}
       onSelectChat={handleSelectChat}
-      searchPlaceholder="Search by product or buyer..."
+      searchPlaceholder="Search by product or seller..."
       loading={loading}
       filters={filters}
       activeFilter={activeFilter}
@@ -175,37 +170,47 @@ export default function SellerChatPage() {
     />
   );
 
-  // Main chat area with unified UI (same as buyer chat)
+  // Main chat area with OLX-style UI
   const selectedChat = chats.find((c) => c.roomId === selectedRoomId);
   const quickReplies = ["okay", "no problem", "please reply", "not interested", "make an offer"];
 
-  const handleSend = async (e?: React.FormEvent) => {
+  // If this is a new chat (not in sidebar), show product info and allow sending first message
+  const isNewChat = selectedRoomId && !selectedChat && newChatProduct;
+
+  const sendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!input.trim() || !selectedRoomId || !user || !socket || !user.primaryEmailAddress) return;
-    const { product, buyer, seller } = parseRoomId(selectedRoomId);
-    const messagePayload: Message = {
+    if (!input.trim() || !selectedRoomId || !user?.primaryEmailAddress || !socket) return;
+    const { buyer, seller } = parseRoomId(selectedRoomId);
+    const msg: Message = { // Added type Message
       roomId: selectedRoomId,
       sender: user.primaryEmailAddress.emailAddress,
       content: input,
-      buyer: buyer,
-      seller: seller,
       createdAt: new Date().toISOString(),
+      buyer,
+      seller,
     };
+    socket.emit("message", msg);
     setInput("");
-    setMessages((prev) => [...prev, messagePayload]);
-    await fetch("/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(messagePayload),
-    });
-    socket.emit("message", { ...messagePayload });
+    try {
+      const res = await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(msg),
+      });
+      if (res.ok && isNewChat) {
+        setTimeout(async () => {
+          await fetchChats();
+          setSelectedRoomId(selectedRoomId);
+        }, 400);
+      }
+    } catch (_err) {} // Changed err to _err
   };
 
   const sendOffer = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!offerAmount.trim() || !selectedRoomId || !user || !socket || !user.primaryEmailAddress) return;
-    const { product, buyer, seller } = parseRoomId(selectedRoomId);
-    const msg: Message = {
+    if (!offerAmount.trim() || !selectedRoomId || !user?.primaryEmailAddress || !socket) return;
+    const { buyer, seller } = parseRoomId(selectedRoomId);
+    const msg: Message = { // Added type Message
       roomId: selectedRoomId,
       sender: user.primaryEmailAddress.emailAddress,
       content: `Offer: ₹${offerAmount}`,
@@ -216,13 +221,43 @@ export default function SellerChatPage() {
     socket.emit("message", msg);
     setOfferAmount("");
     setShowOfferBox(false);
-    await fetch("/api/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(msg),
-    });
-    socket.emit("message", { ...msg, createdAt: new Date() });
+    try {
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(msg),
+      });
+    } catch (_err) {} // Changed err to _err
   };
+
+  useEffect(() => {
+    if (!selectedRoomId || !isSignedIn || !user?.primaryEmailAddress || !socket) return;
+    socket.emit("join", selectedRoomId);
+    socket.emit("join", user.primaryEmailAddress.emailAddress);
+    const messageListener = (msg: Message) => {
+      if (msg.roomId === selectedRoomId) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    };
+    socket.on("message", messageListener);
+    return () => {
+      socket.off("message", messageListener);
+    };
+  }, [selectedRoomId, isSignedIn, user, socket]);
+
+  useEffect(() => {
+    if (!isSignedIn || !user?.primaryEmailAddress || !socket) return;
+    socket.emit("join", user.primaryEmailAddress.emailAddress);
+    const newMessageListener = (msg: Message) => {
+      if (msg.roomId === selectedRoomId) {
+        setMessages((prev) => [...prev, msg]);
+      }
+    };
+    socket.on("new-message", newMessageListener);
+    return () => {
+      socket.off("new-message", newMessageListener);
+    };
+  }, [selectedRoomId, isSignedIn, user, socket]);
 
   const mainArea = (
     <div className="flex flex-col h-full w-full bg-white border-l border-gray-100 rounded-r-2xl p-0">
@@ -232,7 +267,21 @@ export default function SellerChatPage() {
           <Image src={selectedChat.productImage || "/assets/organic.png"} alt={selectedChat.productTitle} width={48} height={48} className="rounded-xl border object-cover w-12 h-12" />
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-black text-lg truncate">{selectedChat.productTitle}</div>
-            <div className="text-xs text-gray-700 truncate">Buyer: {selectedChat.buyerEmail}</div>
+            <div className="text-xs text-gray-700 truncate">Seller: {selectedChat.sellerEmail}</div>
+          </div>
+          {/* Three-dot menu in header */}
+          <button className="ml-2 p-1 rounded-full hover:bg-gray-100 absolute right-4 top-4">
+            <svg width="20" height="20" fill="none" viewBox="0 0 20 20"><circle cx="4" cy="10" r="1.5" fill="#888"/><circle cx="10" cy="10" r="1.5" fill="#888"/><circle cx="16" cy="10" r="1.5" fill="#888"/></svg>
+          </button>
+        </div>
+      )}
+      {/* New chat box for product if not in sidebar */}
+      {isNewChat && (
+        <div className="flex items-center gap-4 border-b px-8 py-3 bg-white min-h-[64px] rounded-tr-2xl">
+          <Image src={newChatProduct.image || "/assets/organic.png"} alt={newChatProduct.title} width={48} height={48} className="rounded-xl border object-cover w-12 h-12" />
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-black text-lg truncate">{newChatProduct.title}</div>
+            <div className="text-xs text-gray-700 truncate">Seller: {newChatProduct.seller?.email}</div>
           </div>
         </div>
       )}
@@ -247,7 +296,14 @@ export default function SellerChatPage() {
         {selectedRoomId && messagesLoading && (
           <div className="text-gray-500">Loading messages...</div>
         )}
-        {selectedRoomId && !messagesLoading && messages.length === 0 && (
+        {selectedRoomId && !messagesLoading && messages.length === 0 && !isNewChat && (
+          <div className="flex flex-col items-center justify-center w-full h-full">
+            <svg width="64" height="64" fill="none" viewBox="0 0 64 64" className="mb-4 text-gray-200"><rect x="8" y="16" width="48" height="32" rx="6" fill="#F3F4F6"/><rect x="16" y="24" width="32" height="4" rx="2" fill="#E5E7EB"/><rect x="16" y="32" width="20" height="4" rx="2" fill="#E5E7EB"/></svg>
+            <div className="text-gray-400 text-lg font-medium">No messages yet. Start the conversation!</div>
+          </div>
+        )}
+        {/* New chat: show blank state for messages */}
+        {isNewChat && (
           <div className="flex flex-col items-center justify-center w-full h-full">
             <svg width="64" height="64" fill="none" viewBox="0 0 64 64" className="mb-4 text-gray-200"><rect x="8" y="16" width="48" height="32" rx="6" fill="#F3F4F6"/><rect x="16" y="24" width="32" height="4" rx="2" fill="#E5E7EB"/><rect x="16" y="32" width="20" height="4" rx="2" fill="#E5E7EB"/></svg>
             <div className="text-gray-400 text-lg font-medium">No messages yet. Start the conversation!</div>
@@ -312,7 +368,7 @@ export default function SellerChatPage() {
           <button className="p-2 rounded-full hover:bg-gray-100" disabled>
             <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M17.657 11.657l-6.364 6.364a4 4 0 01-5.657-5.657l8.485-8.485a2 2 0 112.828 2.828l-8.485 8.485a.5.5 0 01-.707-.707l8.485-8.485" stroke="#888" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
-          <form className="flex-1 flex gap-2" onSubmit={handleSend}>
+          <form className="flex-1 flex gap-2" onSubmit={sendMessage}>
             <input
               type="text"
               className="flex-1 border rounded-full px-4 py-2 bg-white text-black placeholder-gray-400 border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-200"

@@ -1,10 +1,10 @@
 import React, { createContext, useContext, useEffect, useRef } from "react";
-import io from "socket.io-client";
+import io, { Socket } from "socket.io-client";
 
-const SocketContext = createContext<any>(null);
+const SocketContext = createContext<Socket | null>(null);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
-  const socketRef = useRef<any>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (!socketRef.current) {
@@ -32,4 +32,4 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
 export function useSocket() {
   return useContext(SocketContext);
-} 
+}

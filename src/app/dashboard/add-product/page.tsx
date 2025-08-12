@@ -18,7 +18,7 @@ const categories = [
 const tagOptions = ["Organic", "Fresh", "Bulk", "Export", "Local", "Premium", "Wholesale", "Retail"];
 
 export default function AddProductPage() {
-  const { user, isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded } = useUser(); // Removed user
   const router = useRouter();
   const [form, setForm] = useState({
     title: "",
@@ -66,7 +66,7 @@ export default function AddProductPage() {
     setSuccess("");
     // Robust validation
     const trimmedTitle = form.title.trim();
-    const trimmedDescription = form.description.trim();
+    // const trimmedDescription = form.description.trim(); // Removed trimmedDescription
     const priceNumber = Number(form.price);
     // Validate subcategory matches category
     const catObj = categories.find(cat => cat.label === form.category);
@@ -192,4 +192,4 @@ export default function AddProductPage() {
       </form>
     </div>
   );
-} 
+}

@@ -13,6 +13,14 @@ import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
+interface Product {
+  _id: string;
+  title: string;
+  image: string;
+  price: number;
+  seller?: { name: string; email: string; role: string };
+}
+
 const slides = [
   {
     headline: 'Fresh Vegetables for Every Kitchen',
@@ -180,17 +188,15 @@ export default function Home() {
   const [current, setCurrent] = useState(0);
   const [paused, setPaused] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
-  const [filteredProducts, setFilteredProducts] = useState<any[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [filter, setFilter] = useState<{ category: string; subcategory?: string } | null>(null);
   const [loadingFiltered, setLoadingFiltered] = useState(false);
-  const [newArrivals, setNewArrivals] = useState<any[]>([]);
+  const [newArrivals, setNewArrivals] = useState<Product[]>([]);
   const [loadingNewArrivals, setLoadingNewArrivals] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
-  const newArrivalsRef = useRef<HTMLDivElement>(null);
-  const popularRef = useRef<HTMLDivElement>(null);
 
   // Auto-advance logic
   useEffect(() => {
@@ -213,7 +219,7 @@ export default function Home() {
       .then(text => {
         try {
           return text ? JSON.parse(text) : [];
-        } catch {
+        } catch (_err) { // Changed err to _err
           return [];
         }
       })
@@ -221,7 +227,7 @@ export default function Home() {
         setProducts(data);
         setLoadingProducts(false);
       })
-      .catch(err => {
+      .catch(_err => { // Changed err to _err
         setProducts([]);
         setLoadingProducts(false);
         // Optionally, set an error state here
@@ -259,33 +265,12 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    function handleCategorySelect(e: CustomEvent<any>) {
+    function handleCategorySelect(e: CustomEvent<{ category: string; subcategory?: string }>) { // Typed CustomEvent
       setFilter(e.detail);
     }
     window.addEventListener("category-select", handleCategorySelect as EventListener);
     return () => window.removeEventListener("category-select", handleCategorySelect as EventListener);
   }, []);
-
-  const goTo = (idx: number) => {
-    if (idx === current) return;
-    setCurrent(idx);
-  };
-  const prev = () => setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
-  const next = () => setCurrent((prev) => (prev + 1) % slides.length);
-
-  const scrollRow = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
-    if (ref.current) {
-      const amount = 220; // Adjust based on card width
-      ref.current.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' });
-    }
-  };
-
-  // Redirect /dashboard/orders to /orders
-  useEffect(() => {
-    if (pathname === '/dashboard/orders') {
-      router.replace('/orders');
-    }
-  }, [pathname, router]);
 
   return (
     <main className="min-h-screen bg-green-50">
