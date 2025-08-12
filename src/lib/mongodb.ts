@@ -15,11 +15,19 @@ if (!cached) {
 export async function dbConnect() {
   if (cached.conn) return cached.conn;
   if (!cached.promise) {
-    cached.promise = mongoose.connect(MONGODB_URI, {
+    const opts = {
       bufferCommands: false,
-    }).then((mongoose) => mongoose);
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      family: 4, // Use IPv4, skip trying IPv6
+    };
+
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
+      console.log('Connected to MongoDB with optimized settings');
+      return mongoose;
+    });
   }
   cached.conn = await cached.promise;
-  console.log('Connected to MongoDB');
   return cached.conn;
 } 

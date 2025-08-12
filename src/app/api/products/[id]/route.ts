@@ -7,7 +7,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await dbConnect();
+    // Add timeout protection
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database query timeout')), 30000); // 30 second timeout
+    });
+
+    const dbPromise = dbConnect();
+    
+    // Race between timeout and database connection
+    await Promise.race([dbPromise, timeoutPromise]);
     
     const { id } = await params;
     
@@ -15,14 +23,26 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid product ID' }, { status: 400 });
     }
 
-    const product = await Product.findById(id);
+    // Add query timeout
+    const product = await Promise.race([
+      Product.findById(id).exec(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Product query timeout')), 10000)
+      )
+    ]);
     
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 404 });
     }
 
     return NextResponse.json(product);
-  } catch {
+  } catch (error) {
+    console.error('Product API error:', error);
+    
+    if (error instanceof Error && error.message.includes('timeout')) {
+      return NextResponse.json({ error: 'Request timeout - please try again' }, { status: 408 });
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 } 

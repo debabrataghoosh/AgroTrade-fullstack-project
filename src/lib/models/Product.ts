@@ -14,4 +14,11 @@ const ProductSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+// Add indexes for better query performance
+ProductSchema.index({ category: 1 });
+ProductSchema.index({ seller: 1 });
+ProductSchema.index({ live: 1 });
+ProductSchema.index({ createdAt: -1 });
+ProductSchema.index({ title: 'text', description: 'text' });
+
 export default models.Product || mongoose.model('Product', ProductSchema); 
