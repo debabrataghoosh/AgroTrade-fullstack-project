@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbConnect } from '@/lib/mongodb';
-import Message from '@/lib/models/Message';
-import User from '@/lib/models/User';
+import { Message } from '@/lib/models';
+import { User } from '@/lib/models';
 
 // Helper to parse roomId (format: productId-buyerEmail-sellerEmail)
 function parseRoomId(roomId: string) {
