@@ -6,9 +6,47 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export async function POST(req: NextRequest) {
-  const { product, customerEmail } = await req.json();
-
   try {
+    const { product, customerEmail } = await req.json();
+
+    // Validate required fields
+    if (!product || !product.title || !product.price) {
+      console.error('Missing product information:', { product });
+      return NextResponse.json({ 
+        error: "Invalid product information" 
+      }, { status: 400 });
+    }
+
+    if (!customerEmail) {
+      console.error('Missing customer email');
+      return NextResponse.json({ 
+        error: "Customer email is required" 
+      }, { status: 400 });
+    }
+
+    // Validate Stripe key
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('Stripe secret key not configured');
+      return NextResponse.json({ 
+        error: "Payment configuration error" 
+      }, { status: 500 });
+    }
+
+    // Validate price
+    const price = parseFloat(product.price);
+    if (isNaN(price) || price <= 0) {
+      console.error('Invalid price:', product.price);
+      return NextResponse.json({ 
+        error: "Invalid product price" 
+      }, { status: 400 });
+    }
+
+    console.log('Creating Stripe session for:', {
+      productTitle: product.title,
+      price: price,
+      customerEmail: customerEmail
+    });
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -19,7 +57,7 @@ export async function POST(req: NextRequest) {
               name: product.title,
               images: product.image ? [product.image] : [],
             },
-            unit_amount: product.price * 100, // price in paise
+            unit_amount: Math.round(price * 100), // Ensure price is in paise and rounded
           },
           quantity: 1,
         },
@@ -31,8 +69,22 @@ export async function POST(req: NextRequest) {
       cancel_url: `${req.nextUrl.origin}/checkout?canceled=true`,
     });
 
+    console.log('Stripe session created successfully:', session.id);
     return NextResponse.json({ url: session.url });
-  } catch {
-    return NextResponse.json({ error: "Stripe session error" }, { status: 500 });
+
+  } catch (error) {
+    console.error('Stripe checkout error:', error);
+    
+    // Handle specific Stripe errors
+    if (error instanceof Stripe.errors.StripeError) {
+      return NextResponse.json({ 
+        error: `Payment error: ${error.message}` 
+      }, { status: 400 });
+    }
+
+    // Handle other errors
+    return NextResponse.json({ 
+      error: "Failed to create checkout session. Please try again." 
+    }, { status: 500 });
   }
 } 
