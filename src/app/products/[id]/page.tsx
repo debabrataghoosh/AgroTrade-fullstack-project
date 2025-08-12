@@ -1,5 +1,6 @@
 import { dbConnect } from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
+import User from '@/lib/models/User';
 import ProductTabs from '../components/ProductTabs';
 import Link from 'next/link';
 import ChatButton from './ChatButton';
