@@ -46,22 +46,20 @@ io.on('connection', (socket) => {
   });
 });
 
-// Health check endpoint for Render
-const http = require('http');
-const server = http.createServer((req, res) => {
+// Health check endpoint for Render (using the same port)
+io.engine.on('request', (req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'healthy', timestamp: new Date().toISOString() }));
-  } else {
-    res.writeHead(404);
-    res.end('Not Found');
+    res.end(JSON.stringify({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      port: PORT,
+      environment: process.env.NODE_ENV || 'development'
+    }));
   }
-});
-
-server.listen(PORT + 1, () => {
-  console.log(`🏥 Health check server running on port ${PORT + 1}`);
 });
 
 console.log(`🎯 Socket.IO server running on port ${PORT}`);
 console.log('🌐 Allowed origins:', process.env.ALLOWED_ORIGINS || 'Default origins');
 console.log('✨ AgroTrade Socket Server is ready!');
+console.log('🏥 Health check available at: http://localhost:${PORT}/health');
