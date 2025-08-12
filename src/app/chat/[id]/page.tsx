@@ -57,7 +57,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (!id || !isSignedIn || !user || !user.primaryEmailAddress) return;
     if (!socket) {
-      socket = io("http://localhost:3001");
+      socket = io("https://agrotrade-fullstack-project.onrender.com");
     }
     socket.emit("join", id);
     // Also join notification room for this user
