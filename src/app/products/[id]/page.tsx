@@ -3,8 +3,9 @@ import { Product, User } from '@/lib/models';
 import ProductTabs from '../components/ProductTabs';
 import Link from 'next/link';
 import ChatButton from './ChatButton';
-import { FaUser, FaTag, FaRegHeart, FaShareAlt, FaCheckCircle } from 'react-icons/fa';
+import { FaUser, FaTag, FaCheckCircle } from 'react-icons/fa';
 import SuggestedProductsSlider from './SuggestedProductsSlider';
+import ProductActions from './ProductActions';
 
 // Server component: receives params
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -68,10 +69,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <div className="flex-1 flex flex-col gap-4 justify-center min-w-[320px]">
           <div className="flex items-center justify-between mb-2 gap-4">
             <h1 className="text-3xl md:text-4xl font-extrabold text-green-800 tracking-tight leading-tight drop-shadow">{product.title}</h1>
-            <div className="flex flex-col items-end gap-6">
-              <button className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center text-red-500 hover:bg-red-100 transition"><FaRegHeart size={28} /></button>
-              <button className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center text-green-600 hover:bg-green-100 transition"><FaShareAlt size={28} /></button>
-            </div>
+            <ProductActions 
+              productId={product._id} 
+              productTitle={product.title} 
+              productImage={product.image}
+            />
           </div>
           <div className="text-gray-700 mb-1 flex items-center gap-3">
             <FaTag className="text-green-400" />

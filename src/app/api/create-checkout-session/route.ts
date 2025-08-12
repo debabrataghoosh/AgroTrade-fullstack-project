@@ -41,10 +41,32 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
+    // Validate and clean image URL
+    let validImageUrl = null;
+    if (product.image && product.image.trim()) {
+      try {
+        // If it's already a full URL, validate it
+        if (product.image.startsWith('http://') || product.image.startsWith('https://')) {
+          const url = new URL(product.image);
+          validImageUrl = product.image;
+        } else if (product.image.startsWith('/')) {
+          // If it's a relative path, make it absolute
+          validImageUrl = `${req.nextUrl.origin}${product.image}`;
+        } else {
+          // If it's just a filename or path, try to construct a valid URL
+          console.warn('Potentially invalid image URL format:', product.image);
+        }
+      } catch (error) {
+        console.warn('Invalid image URL:', product.image, error);
+      }
+    }
+
     console.log('Creating Stripe session for:', {
       productTitle: product.title,
       price: price,
-      customerEmail: customerEmail
+      customerEmail: customerEmail,
+      productImage: product.image,
+      validImageUrl: validImageUrl
     });
 
     const session = await stripe.checkout.sessions.create({
@@ -55,7 +77,7 @@ export async function POST(req: NextRequest) {
             currency: "inr",
             product_data: {
               name: product.title,
-              images: product.image ? [product.image] : [],
+              ...(validImageUrl && { images: [validImageUrl] }),
             },
             unit_amount: Math.round(price * 100), // Ensure price is in paise and rounded
           },
