@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
+import { FaSync } from "react-icons/fa";
 
 interface OrderItem {
   productId: string;
@@ -51,30 +52,70 @@ function formatDate(dateString: string) {
 }
 
 export default function OrdersPage() {
-  const { user } = useUser();
+  const { user, isSignedIn, isLoaded } = useUser();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
+    console.log('Orders page - User:', user);
+    console.log('Orders page - User email:', user?.emailAddresses?.[0]?.emailAddress);
+    
     if (user?.emailAddresses?.[0]?.emailAddress) {
       fetchOrders();
+      
+      // Set up polling to refresh orders every 30 seconds
+      const interval = setInterval(() => {
+        fetchOrders();
+      }, 30000); // 30 seconds
+      
+      return () => clearInterval(interval);
+    } else {
+      console.log('No user email found, setting loading to false');
+      setLoading(false);
     }
   }, [user]);
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (isRefresh = false) => {
     try {
-      setLoading(true);
-      const response = await fetch(`/api/orders?userEmail=${encodeURIComponent(user?.emailAddresses[0]?.emailAddress || "")}`);
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
+      const userEmail = user?.emailAddresses[0]?.emailAddress;
+      console.log('Fetching orders for email:', userEmail);
+      
+      const response = await fetch(`/api/orders?userEmail=${encodeURIComponent(userEmail || "")}`);
+      console.log('Orders API response status:', response.status);
+      
       if (!response.ok) throw new Error("Failed to fetch orders");
       const data = await response.json();
+      console.log('Orders data received:', data);
+      console.log('Number of orders:', data.length);
+      if (data.length > 0) {
+        console.log('First order details:', data[0]);
+        console.log('First order items:', data[0].items);
+      }
+      
       setOrders(data);
+      setError(null);
+      setLastUpdate(new Date());
     } catch (_err) {
+      console.error('Error fetching orders:', _err);
       setError("Failed to load orders");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    fetchOrders(true);
   };
 
   // Filter orders by search
@@ -86,6 +127,34 @@ export default function OrdersPage() {
       order.items.some((item) => item.title.toLowerCase().includes(searchLower))
     );
   });
+
+  // Show loading while Clerk is loading
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 py-8 px-2">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center text-green-700 py-16 text-lg">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to sign in if not authenticated
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 py-8 px-2">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center py-16">
+            <h2 className="text-2xl font-bold mb-4 text-red-600">Authentication Required</h2>
+            <p className="text-gray-600 mb-8">Please sign in to view your orders.</p>
+            <a href="/sign-in" className="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-full font-semibold transition-colors">
+              Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 py-8 px-2">
@@ -99,7 +168,24 @@ export default function OrdersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
+          <div className="flex items-center gap-3">
+            {lastUpdate && (
+              <span className="text-xs text-gray-500">
+                Last updated: {lastUpdate.toLocaleTimeString()}
+              </span>
+            )}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FaSync className={`${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
+          </div>
         </div>
+
+        
         {loading ? (
           <div className="text-center text-green-700 py-16 text-lg">Loading your orders...</div>
         ) : error ? (

@@ -61,7 +61,7 @@ export default function CustomUserButton() {
           <Link href="/dashboard/profile" className="block px-4 py-2 hover:bg-gray-100 text-gray-800 flex items-center gap-2">
             <span>⚙️</span> Manage Account
           </Link>
-          <Link href="/dashboard/orders" className="block px-4 py-2 hover:bg-gray-100 text-gray-800 flex items-center gap-2">
+          <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100 text-gray-800 flex items-center gap-2">
             <span>🛒</span> Orders
           </Link>
           <Link href="/wishlist" className="block px-4 py-2 hover:bg-gray-100 text-gray-800 flex items-center gap-2">

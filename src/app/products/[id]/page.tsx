@@ -118,7 +118,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               }
               className="flex-1 bg-green-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-green-700 transition-all duration-200 text-center flex items-center justify-center"
             >
-              Buy this Item
+              Proceed to Checkout
             </Link>
             <ChatButton productId={product._id} sellerEmail={product.seller?.email} className="flex-1 flex items-center justify-center gap-2 bg-green-100 text-green-800 border-2 border-green-300 px-8 py-4 rounded-2xl font-bold text-lg shadow hover:bg-green-200 transition-all duration-200" icon />
           </div>

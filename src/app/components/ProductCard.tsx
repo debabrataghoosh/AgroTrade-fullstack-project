@@ -135,7 +135,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ _id, title, image, price, qua
         <h3 
           className="font-semibold text-sm sm:text-base text-gray-900 mb-2 line-clamp-2 leading-tight"
         >
-          {title}
+          {title || 'Untitled Product'}
         </h3>
 
         {/* Category and Rating Row */}
@@ -155,7 +155,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ _id, title, image, price, qua
         <div 
           className="text-xs text-gray-500 mb-3"
         >
-          by {seller?.name || 'Unknown'}
+          by {seller?.name || 'Unknown Seller'}
         </div>
 
         {/* Footer: Price + Buy button */}
@@ -169,7 +169,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ _id, title, image, price, qua
             className="flex items-baseline gap-1"
           >
             <span className="text-green-600 font-extrabold text-lg sm:text-xl">
-              ₹{price.toLocaleString()}
+              ₹{price ? price.toLocaleString() : 'N/A'}
             </span>
             {quantity && unit && (
               <span className="text-xs text-gray-500 font-normal">

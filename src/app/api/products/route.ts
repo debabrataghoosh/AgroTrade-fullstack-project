@@ -43,8 +43,29 @@ export async function GET(request: NextRequest) {
   if (search) {
     query = query.where('title', new RegExp(search, 'i'));
   }
-  if (sort === 'new') {
-    query = query.sort({ createdAt: -1 });
+  // Handle sorting
+  if (sort) {
+    switch (sort) {
+      case 'newest':
+        query = query.sort({ createdAt: -1 });
+        break;
+      case 'price-low':
+        query = query.sort({ price: 1 });
+        break;
+      case 'price-high':
+        query = query.sort({ price: -1 });
+        break;
+      case 'name-asc':
+        query = query.sort({ title: 1 });
+        break;
+      case 'name-desc':
+        query = query.sort({ title: -1 });
+        break;
+      default:
+        query = query.sort({ createdAt: -1 }); // Default to newest
+    }
+  } else {
+    query = query.sort({ createdAt: -1 }); // Default to newest
   }
   const products = await query.populate('seller', 'name email role');
   return NextResponse.json(products);

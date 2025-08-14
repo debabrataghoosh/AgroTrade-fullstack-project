@@ -32,9 +32,45 @@ export async function GET(request: NextRequest) {
       .populate('productId')
       .sort({ addedAt: -1 });
 
-    return NextResponse.json(wishlistItems);
+    console.log('Found wishlist items:', wishlistItems.length);
+
+    // Add the original productId to each item for easier deletion
+    const itemsWithOriginalId = wishlistItems.map(item => {
+      try {
+        const itemObj = item.toObject();
+        // Handle cases where productId might be null or undefined
+        const originalProductId = itemObj.productId?._id || itemObj.productId || null;
+        
+        console.log('Processing item:', {
+          itemId: itemObj._id,
+          productId: itemObj.productId,
+          originalProductId
+        });
+        
+        return {
+          ...itemObj,
+          originalProductId
+        };
+      } catch (itemError) {
+        console.error('Error processing wishlist item:', itemError, item);
+        // Return a safe fallback for corrupted items
+        return {
+          _id: item._id,
+          userEmail: item.userEmail,
+          addedAt: item.addedAt,
+          productId: null,
+          originalProductId: null
+        };
+      }
+    });
+
+    return NextResponse.json(itemsWithOriginalId);
   } catch (error) {
     console.error('Wishlist GET error:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

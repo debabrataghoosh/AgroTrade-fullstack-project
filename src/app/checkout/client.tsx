@@ -1,345 +1,632 @@
-
-"use client";
-import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+'use client';
+import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { loadStripe } from '@stripe/stripe-js';
+import axios from 'axios';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FaShoppingCart, FaCreditCard, FaMoneyBillWave, FaMapMarkerAlt, FaUser, FaPhone, FaHome, FaCity, FaGlobe, FaExternalLinkAlt } from 'react-icons/fa';
 
-interface Product {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  subcategory: string;
-  quantity: number;
-  unit: string;
-  image: string;
-  sellerEmail: string;
-}
-
-interface CartItem extends Product {
-  id: string;
-  title: string;
-}
-
-interface Address {
-  id: string;
-  name: string;
-  phone: string;
-  address: string;
-  city: string;
-  state: string;
-  pincode: string;
-  isDefault: boolean;
-}
-
-function getCartFromStorage() {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem('cart') || '[]');
-  } catch {
-    return [];
-  }
-}
-function getAddressesFromStorage() {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem('addresses') || '[]');
-  } catch {
-    return [];
-  }
-}
-
-export default function CheckoutClientPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { user } = useUser();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [payLoading, setPayLoading] = useState(false);
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [addresses, setAddresses] = useState<Address[]>([]);
-  const [showAddAddress, setShowAddAddress] = useState(false);
-  const [newAddress, setNewAddress] = useState({
-    name: '',
+const CheckoutForm = ({ user, checkoutUrl, quantity, onQuantityChange, paymentMethod, onPaymentMethodChange, switchingPayment }: { 
+  user: any, 
+  checkoutUrl: string | null,
+  quantity: number,
+  onQuantityChange: (quantity: number) => void,
+  paymentMethod: string,
+  onPaymentMethodChange: (method: string) => void,
+  switchingPayment: boolean
+}) => {
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [shippingAddress, setShippingAddress] = useState({
+    fullName: '',
     phone: '',
     address: '',
     city: '',
     state: '',
-    pincode: ''
+    pincode: '',
+    country: 'India'
   });
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // Get productId from query params
-  const productId = searchParams?.get("productId");
+  // Helper function to safely get search params
+  const getSearchParam = (key: string, defaultValue: string = '') => {
+    return searchParams?.get(key) || defaultValue;
+  };
 
-  // Cart state
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const getPrimaryEmail = () => {
+    if (!user) return null;
+    const primaryEmail = user.emailAddresses.find((email: any) => email.id === user.primaryEmailAddressId);
+    return primaryEmail ? primaryEmail.emailAddress : null;
+  }
 
-  // Load cart and addresses from localStorage on mount
-  useEffect(() => {
-    // If productId, title, price, etc. are in query, treat as single-product checkout
-    const title = searchParams?.get('title');
-    const image = searchParams?.get('image');
-    const price = searchParams?.get('price');
-    const quantity = searchParams?.get('quantity') || '1';
-    const unit = searchParams?.get('unit');
-    const category = searchParams?.get('category');
-    const seller = searchParams?.get('seller');
-    if (title && price) {
-      setCart([
-        {
-          id: productId || '',
-          title,
-          image: image || '',
-          price: parseFloat(price),
-          quantity: parseInt(quantity),
-          unit: unit || '',
-          category: category || '',
-          sellerEmail: seller || '',
-          _id: productId || '',
-          name: title,
-          description: '',
-          subcategory: '',
-        },
-      ]);
-    } else {
-      setCart(getCartFromStorage());
+  const handleQuantityChange = (newQuantity: number) => {
+    if (newQuantity >= 1 && newQuantity <= 100) {
+      onQuantityChange(newQuantity);
     }
-    const savedAddresses = getAddressesFromStorage();
-    setAddresses(savedAddresses);
-    if (savedAddresses.length > 0) setSelectedAddress(savedAddresses[0]);
-  }, [searchParams, productId]);
+  };
 
-  // Save addresses to localStorage when changed
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('addresses', JSON.stringify(addresses));
+  const handleAddressChange = (field: string, value: string) => {
+    setShippingAddress(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleOnlinePayment = async () => {
+    if (!checkoutUrl) {
+      setErrorMessage('Checkout session not ready. Please wait a moment.');
+      return;
     }
-  }, [addresses]);
 
-  useEffect(() => {
-    if (!productId) return;
-    fetch(`/api/products/${productId}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Product not found');
-        return res.json();
-      })
-      .then(data => {
-        if (!data || Object.keys(data).length === 0) {
-          setError('Product not found.');
-        } else {
-          // setProduct(data);
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setError('Product not found.');
-        setLoading(false);
-      });
-  }, [productId]);
+    // Redirect to Stripe checkout
+    window.location.href = checkoutUrl;
+  };
 
-  const handlePlaceOrder = async () => {
-    setPayLoading(true);
+  const handleCashOnDelivery = async () => {
     try {
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product: cart[0], // Assuming only one product in the cart for now
-          customerEmail: user?.primaryEmailAddress?.emailAddress,
-        }),
-      });
-
-      const { url } = await response.json();
-      if (url) {
-        router.push(url);
-      } else {
-        setError('Failed to create checkout session.');
+      const primaryEmail = getPrimaryEmail();
+      if (!primaryEmail) {
+        setErrorMessage("Primary email address not found.");
+        return;
       }
-    } catch (error: unknown) { // Changed any to unknown
-      setError('Failed to create checkout session.');
-    } finally {
-      setPayLoading(false);
+
+      // Validate shipping address
+      if (!shippingAddress.fullName || !shippingAddress.phone || !shippingAddress.address || !shippingAddress.city || !shippingAddress.state || !shippingAddress.pincode) {
+        setErrorMessage("Please fill in all shipping address fields.");
+        return;
+      }
+
+      const product = {
+        productId: getSearchParam('productId'),
+        title: getSearchParam('title'),
+        image: getSearchParam('image'),
+        price: parseFloat(getSearchParam('price', '0')),
+        quantity: quantity,
+        unit: getSearchParam('unit'),
+        category: getSearchParam('category'),
+        seller: getSearchParam('seller'),
+      };
+
+      await axios.post('/api/orders', {
+        userEmail: primaryEmail,
+        items: [product],
+        address: shippingAddress,
+        status: 'Placed',
+        paymentMethod: 'cod',
+      });
+      router.push('/order-success?payment_method=cod');
+    } catch (error) {
+      console.error(error);
+      setErrorMessage('Failed to place order. Please try again.');
     }
   };
 
-  const [promo, setPromo] = useState('');
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setErrorMessage(null);
 
-  const handleQty = (idx: number, dir: 'inc' | 'dec') => {
-    setCart(cart => cart.map((item, i) =>
-      i === idx ? { ...item, quantity: Math.max(1, item.quantity + (dir === 'inc' ? 1 : -1)) } : item
-    ));
-  };
-  const handleRemove = (idx: number) => {
-    setCart(cart => cart.filter((_, i) => i !== idx));
-  };
+    if (paymentMethod === 'online') {
+      await handleOnlinePayment();
+    } else {
+      await handleCashOnDelivery();
+    }
 
-  // Totals
-  const itemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const itemsTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shipping: number = 0;
-  const tax = Math.round(itemsTotal * 0.02);
-  const total = itemsTotal + shipping + tax;
-
-  // Address modal handlers
-  const handleSelectAddress = (addr: Address) => {
-    setSelectedAddress(addr);
-    setShowAddAddress(false);
-  };
-  const handleAddAddress = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAddress.name || !newAddress.phone || !newAddress.address || !newAddress.city || !newAddress.state || !newAddress.pincode) return;
-    const addr = { 
-      ...newAddress, 
-      id: Date.now().toString(),
-      isDefault: addresses.length === 0
-    };
-    setAddresses(prev => [...prev, addr]);
-    setSelectedAddress(addr);
-    setNewAddress({ name: '', phone: '', address: '', city: '', state: '', pincode: '' });
-    setShowAddAddress(false);
+    setLoading(false);
   };
 
-  if (!productId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">No product selected</h2>
-          <Link href="/products" className="text-green-700 underline">Go to Products</Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-lg">Loading...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4 text-red-600">{error}</h2>
-          <Link href="/products" className="text-green-700 underline">Go to Products</Link>
-        </div>
-      </div>
-    );
-  }
+  const basePrice = parseFloat(getSearchParam('price', '0'));
+  const totalPrice = basePrice * quantity;
 
   return (
-    <div className="min-h-screen w-full bg-green-50 flex flex-col items-center py-10">
-      <div className="w-full max-w-6xl mx-auto flex flex-col md:flex-row gap-8">
-        {/* Cart Table */}
-        <div className="flex-1 bg-white rounded-2xl shadow-lg border border-green-100 p-8">
-          <h1 className="text-2xl font-bold mb-2 text-green-900 flex items-center gap-2">
-            <span>Your</span> <span className="text-green-600">Cart</span>
-          </h1>
-          <div className="flex justify-between items-center mb-6">
-            <div className="text-green-700 font-semibold text-base">Product Details</div>
-            <div className="flex-1 flex justify-between ml-8">
-              <div className="w-24 text-right text-green-700 font-semibold">Price</div>
-              <div className="w-32 text-center text-green-700 font-semibold">Quantity</div>
-              <div className="w-24 text-right text-green-700 font-semibold">Subtotal</div>
-            </div>
-            <div className="w-4" />
-          </div>
-          <div className="divide-y divide-green-50">
-            {cart.map((item, idx) => (
-              <div key={item.id} className="flex items-center py-6">
-                <div className="flex items-center gap-4 w-64">
-                  <img src={item.image} alt={item.title} className="w-16 h-16 rounded bg-green-50 object-contain border border-green-100" />
-                  <div>
-                    <div className="font-semibold text-green-900">{item.title}</div>
-                    <button onClick={() => handleRemove(idx)} className="text-green-600 text-xs mt-1 hover:underline">Remove</button>
-                  </div>
-                </div>
-                <div className="flex-1 flex justify-between ml-8 items-center">
-                  <div className="w-24 text-right text-green-800 font-medium">₹{item.price.toLocaleString()}</div>
-                  <div className="w-32 flex items-center justify-center gap-2">
-                    <button onClick={() => handleQty(idx, 'dec')} className="p-1 rounded border text-green-600 border-green-200 hover:bg-green-50"><FaChevronLeft size={14} /></button>
-                    <span className="px-3 text-green-900 font-semibold">{item.quantity}</span>
-                    <button onClick={() => handleQty(idx, 'inc')} className="p-1 rounded border text-green-600 border-green-200 hover:bg-green-50"><FaChevronRight size={14} /></button>
-                  </div>
-                  <div className="w-24 text-right text-green-900 font-semibold">₹{(item.price * item.quantity).toLocaleString()}</div>
-                </div>
-                <div className="w-4" />
-              </div>
-            ))}
-          </div>
-          <div className="mt-8">
-            <Link href="/products" className="text-green-700 font-medium flex items-center gap-1 hover:underline">
-              <FaChevronLeft size={16} /> Continue Shopping
-            </Link>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 py-8 px-4">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-green-900 mb-2">Checkout</h1>
+          <p className="text-green-700 text-lg">Complete your purchase securely</p>
         </div>
-        {/* Order Summary */}
-        <div className="w-full md:w-96 bg-green-50 rounded-2xl shadow-lg border border-green-100 p-8 h-fit">
-          <h2 className="text-xl font-bold mb-6 text-green-900">Order Summary</h2>
-          <div className="mb-4">
-            <div className="text-xs text-green-700 font-semibold mb-1">SELECT ADDRESS</div>
-            <div className="bg-white border border-green-100 rounded px-3 py-2 text-sm flex items-center justify-between cursor-pointer" onClick={() => setShowAddAddress(true)}>
-              <span className="text-green-900">{selectedAddress ? `${selectedAddress.name}, ${selectedAddress.address}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.pincode}` : 'Add new address'}</span>
-              <span className="text-green-300 ml-2">&gt;</span>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Checkout Form */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-xl shadow-lg p-8 border border-green-100">
+              {/* Quantity Selection */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-green-900 mb-4 flex items-center gap-3">
+                  <FaShoppingCart className="text-green-600" />
+                  Quantity Selection
+                </h2>
+                <div className="flex items-center gap-4 p-4 bg-green-50 rounded-lg">
+                  <img
+                    src={getSearchParam('image', '/assets/file.svg')}
+                    alt={getSearchParam('title', 'Product')}
+                    className="w-16 h-16 object-contain rounded-lg border border-green-200 bg-white"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-green-900 text-lg">
+                      {getSearchParam('title', 'Product')}
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      {getSearchParam('category', 'Category')}
+                    </p>
+                    <p className="text-green-700 font-medium">
+                      ₹{basePrice} per {getSearchParam('unit', 'unit')}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleQuantityChange(quantity - 1)}
+                      disabled={quantity <= 1}
+                      className="w-10 h-10 rounded-full border-2 border-green-300 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center font-bold text-lg"
+                    >
+                      -
+                    </button>
+                    <span className="w-12 text-center font-semibold text-green-900 text-lg">
+                      {quantity}
+                    </span>
+                    <button
+                      onClick={() => handleQuantityChange(quantity + 1)}
+                      disabled={quantity >= 100}
+                      className="w-10 h-10 rounded-full border-2 border-green-300 text-green-600 hover:bg-green-50 disabled:cursor-not-allowed flex items-center justify-center font-bold text-lg"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Shipping Address */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-green-900 mb-4 flex items-center gap-3">
+                  <FaMapMarkerAlt className="text-green-600" />
+                  Shipping Address
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaUser className="inline mr-2 text-green-600" />
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingAddress.fullName}
+                      onChange={(e) => handleAddressChange('fullName', e.target.value)}
+                      className="w-full px-4 py-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 text-green-900"
+                      placeholder="Enter your full name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaPhone className="inline mr-2 text-green-600" />
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={shippingAddress.phone}
+                      onChange={(e) => handleAddressChange('phone', e.target.value)}
+                      className="w-full px-4 py-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 text-green-900"
+                      placeholder="Enter your phone number"
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaHome className="inline mr-2 text-green-600" />
+                      Address Line 1 *
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingAddress.address}
+                      onChange={(e) => handleAddressChange('address', e.target.value)}
+                      className="w-full px-4 py-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 text-green-900"
+                      placeholder="Enter your street address"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaCity className="inline mr-2 text-green-600" />
+                      City *
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingAddress.city}
+                      onChange={(e) => handleAddressChange('city', e.target.value)}
+                      className="w-full px-4 py-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 text-green-900"
+                      placeholder="Enter your city"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <FaGlobe className="inline mr-2 text-green-600" />
+                      State *
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingAddress.state}
+                      onChange={(e) => handleAddressChange('state', e.target.value)}
+                      className="w-full px-4 py-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 text-green-900"
+                      placeholder="Enter your state"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Pincode *
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingAddress.pincode}
+                      onChange={(e) => handleAddressChange('pincode', e.target.value)}
+                      className="w-full px-4 py-3 border border-green-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400 text-green-900"
+                      placeholder="Enter pincode"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold text-green-900 mb-4 flex items-center gap-3">
+                  <FaCreditCard className="text-green-600" />
+                  Payment Method
+                </h3>
+                <div className="space-y-4">
+                  <label className="flex items-center p-4 border border-green-200 rounded-lg hover:bg-green-50 transition-colors cursor-pointer">
+                                          <input
+                        type="radio"
+                        name="paymentMethod"
+                        value="online"
+                        checked={paymentMethod === 'online'}
+                        onChange={() => onPaymentMethodChange('online')}
+                        className="mr-3 text-green-600 focus:ring-green-500"
+                      />
+                    <div className="flex items-center gap-3">
+                      <FaCreditCard className="text-green-600 text-xl" />
+                      <div>
+                        <div className="font-semibold text-green-900">Online Payment</div>
+                        <div className="text-sm text-gray-600">Secure payment with Stripe</div>
+                      </div>
+                    </div>
+                  </label>
+                  
+                                    <label className="flex items-center p-4 border border-green-200 rounded-lg hover:bg-green-50 transition-colors cursor-pointer">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="cod"
+                      checked={paymentMethod === 'cod'}
+                      onChange={() => onPaymentMethodChange('cod')}
+                      className="mr-3 text-green-600 focus:ring-green-500"
+                    />
+                    <div className="flex items-center gap-3">
+                      <FaMoneyBillWave className="text-green-600 text-xl" />
+                      <div>
+                        <div className="font-semibold text-green-900">Cash on Delivery</div>
+                        <div className="text-sm text-gray-600">Pay when you receive your order</div>
+                        <div className="text-xs text-green-600 mt-1">
+                          ✅ Available for all order amounts (Default)
+                        </div>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Online Payment Info */}
+              {paymentMethod === 'online' && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-3 text-blue-700">
+                    <FaExternalLinkAlt className="text-blue-600" />
+                    <div>
+                      <div className="font-semibold">Online Payment</div>
+                      <div className="text-sm">You'll be redirected to Stripe's secure payment page to complete your purchase.</div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        💡 Minimum order amount for online payment: ₹50
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Method Switching Info */}
+              {switchingPayment && (
+                <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center gap-3 text-yellow-700">
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-600"></div>
+                    <div>
+                      <div className="font-semibold">Setting up payment...</div>
+                      <div className="text-sm">Please wait while we prepare your checkout session.</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || (paymentMethod === 'online' && !checkoutUrl)}
+                className="w-full bg-green-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center gap-3"
+                onClick={handleSubmit}
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                    Processing...
+                  </>
+                ) : paymentMethod === 'online' ? (
+                  <>
+                    <FaCreditCard />
+                    Proceed to Payment
+                  </>
+                ) : (
+                  <>
+                    <FaShoppingCart />
+                    Place Order
+                  </>
+                )}
+              </button>
+              
+              {errorMessage && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                  {errorMessage}
+                </div>
+              )}
             </div>
           </div>
-          {/* Address Modal */}
-          {showAddAddress && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-              <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-                <h3 className="text-lg font-bold mb-4 text-green-800">Select Address</h3>
-                <div className="space-y-2 mb-4 max-h-40 overflow-y-auto">
-                  {addresses.map((addr, i) => (
-                    <div key={i} className={`p-3 rounded border cursor-pointer ${selectedAddress === addr ? 'border-green-600 bg-green-50' : 'border-green-100 hover:bg-green-50'}`} onClick={() => handleSelectAddress(addr)}>
-                      <div className="font-semibold text-green-900">{addr.name} <span className="text-green-700 text-xs ml-2">{addr.phone}</span></div>
-                      <div className="text-green-800 text-sm">{addr.address}, {addr.city}, {addr.state}, {addr.pincode}</div>
-                    </div>
-                  ))}
-                </div>
-                <form onSubmit={handleAddAddress} className="space-y-2">
-                  <div className="font-semibold text-green-700">Add New Address</div>
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="Name" value={newAddress.name} onChange={e => setNewAddress(a => ({ ...a, name: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="Mobile No" value={newAddress.phone} onChange={e => setNewAddress(a => ({ ...a, phone: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="Address" value={newAddress.address} onChange={e => setNewAddress(a => ({ ...a, address: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="City" value={newAddress.city} onChange={e => setNewAddress(a => ({ ...a, city: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="State" value={newAddress.state} onChange={e => setNewAddress(a => ({ ...a, state: e.target.value }))} />
-                  <input className="w-full border border-green-200 rounded px-3 py-2 text-sm text-black" placeholder="ZIP Code" value={newAddress.pincode} onChange={e => setNewAddress(a => ({ ...a, pincode: e.target.value }))} />
-                  <div className="flex gap-2 mt-2">
-                    <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded font-semibold text-sm hover:bg-green-700 transition">Add Address</button>
-                    <button type="button" className="bg-gray-200 text-green-900 px-4 py-2 rounded font-semibold text-sm hover:bg-gray-300 transition" onClick={() => setShowAddAddress(false)}>Cancel</button>
+
+          {/* Right Column - Order Summary */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-xl shadow-lg p-6 border border-green-100 sticky top-8">
+              <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center gap-3">
+                <FaShoppingCart className="text-green-600" />
+                Order Summary
+              </h3>
+              
+              <div className="space-y-4 mb-6">
+                <div className="flex items-center gap-4 p-4 bg-green-50 rounded-lg">
+                  <img
+                    src={getSearchParam('image', '/assets/file.svg')}
+                    alt={getSearchParam('title', 'Product')}
+                    className="w-16 h-16 object-contain rounded-lg border border-green-200 bg-white"
+                  />
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-green-900 text-lg">
+                      {getSearchParam('title', 'Product')}
+                    </h4>
+                    <p className="text-gray-600 text-sm">
+                      {getSearchParam('category', 'Category')}
+                    </p>
+                    <p className="text-green-700 font-medium">
+                      Quantity: {quantity} {getSearchParam('unit', 'unit')}
+                    </p>
                   </div>
-                </form>
+                </div>
+              </div>
+
+              <div className="border-t border-green-200 pt-4 space-y-3">
+                <div className="flex justify-between text-gray-600">
+                  <span>Price per {getSearchParam('unit', 'unit')}</span>
+                  <span>₹{basePrice}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Quantity</span>
+                  <span>{quantity}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Subtotal</span>
+                  <span>₹{totalPrice}</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Shipping</span>
+                  <span className="text-green-600">Free</span>
+                </div>
+                <div className="flex justify-between text-gray-600">
+                  <span>Tax</span>
+                  <span>₹0</span>
+                </div>
+                <div className="border-t border-green-200 pt-3">
+                  <div className="flex justify-between text-xl font-bold text-green-900">
+                    <span>Total</span>
+                    <span>₹{totalPrice}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 p-4 bg-green-50 rounded-lg">
+                <div className="flex items-center gap-2 text-green-700 text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  Secure checkout powered by Stripe
+                </div>
+                {totalPrice >= 50 && (
+                  <div className="flex items-center gap-2 text-green-600 text-xs mt-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    ✅ Minimum amount (₹50) met for online payment
+                  </div>
+                )}
+                {totalPrice < 50 && (
+                  <div className="flex items-center gap-2 text-orange-600 text-xs mt-2">
+                    <div className="w-2 h-2 bg-orange-400 rounded-full"></div>
+                    ⚠️ Add ₹{50 - totalPrice} more for online payment
+                  </div>
+                )}
               </div>
             </div>
-          )}
-          <div className="mb-4">
-            <div className="text-xs text-green-700 font-semibold mb-1">PROMO CODE</div>
-            <div className="flex gap-2">
-              <input type="text" value={promo} onChange={e => setPromo(e.target.value)} placeholder="Enter promo code" className="flex-1 px-3 py-2 rounded border border-green-100 text-sm text-green-900 bg-green-50 focus:bg-white focus:border-green-400" />
-              <button className="bg-green-600 text-white px-5 py-2 rounded font-semibold text-sm hover:bg-green-700 transition">Apply</button>
-            </div>
           </div>
-          <div className="border-t border-green-100 pt-4 mt-4 text-sm text-green-900 space-y-2">
-            <div className="flex justify-between"><span>ITEMS {itemsCount}</span><span>₹{itemsTotal.toLocaleString()}</span></div>
-            <div className="flex justify-between"><span>Shipping Fee</span><span>{shipping === 0 ? 'Free' : `₹${shipping.toLocaleString()}`}</span></div>
-            <div className="flex justify-between"><span>Tax (2%)</span><span>₹{tax.toLocaleString()}</span></div>
-          </div>
-          <div className="flex justify-between items-center mt-6 text-lg font-bold text-green-900">
-            <span>Total</span>
-            <span>₹{total.toLocaleString()}</span>
-          </div>
-          <button
-            className="w-full mt-6 bg-green-600 text-white py-3 rounded-full font-bold text-base hover:bg-green-700 transition btn-primary disabled:opacity-60"
-            onClick={handlePlaceOrder}
-            disabled={payLoading || !selectedAddress}
-          >
-            {payLoading ? 'Processing...' : 'Place Order'}
-          </button>
         </div>
       </div>
     </div>
   );
-}
+};
+
+const CheckoutClient = ({ user }: { user: any }) => {
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [switchingPayment, setSwitchingPayment] = useState(false);
+  const searchParams = useSearchParams();
+
+  const createCheckoutSession = async (selectedQuantity: number = 1) => {
+    console.log('createCheckoutSession called with:', { selectedQuantity, paymentMethod });
+    
+    // Prevent Stripe session creation if COD is selected
+    if (paymentMethod === 'cod') {
+      console.log('COD selected, skipping Stripe session creation');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const primaryEmail = user.emailAddresses.find((email: any) => email.id === user.primaryEmailAddressId)?.emailAddress;
+      if (!primaryEmail) {
+        setError("Primary email address not found.");
+        return;
+      }
+
+      const product = {
+        title: searchParams?.get('title'),
+        price: parseFloat(searchParams?.get('price') || '0'),
+        image: searchParams?.get('image'),
+        _id: searchParams?.get('productId'),
+        unit: searchParams?.get('unit'),
+        category: searchParams?.get('category'),
+        sellerEmail: searchParams?.get('seller'),
+      };
+
+      console.log('Creating checkout session with:', { product, customerEmail: primaryEmail, quantity: selectedQuantity });
+      console.log('Product price from URL:', searchParams?.get('price'));
+      console.log('Parsed price:', parseFloat(searchParams?.get('price') || '0'));
+      console.log('Selected quantity:', selectedQuantity);
+      console.log('Expected total:', parseFloat(searchParams?.get('price') || '0') * selectedQuantity);
+
+      const res = await axios.post('/api/create-checkout-session', {
+        product,
+        customerEmail: primaryEmail,
+        quantity: selectedQuantity,
+      });
+
+      console.log('Checkout session response:', res.data);
+
+      if (res.data.url) {
+        setCheckoutUrl(res.data.url);
+      } else {
+        setError('Failed to create checkout session');
+      }
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      
+      // Handle specific error cases
+      if (error.response?.data?.code === 'AMOUNT_TOO_LOW') {
+        const { minimumAmount, currentAmount } = error.response.data;
+        const basePrice = parseFloat(searchParams?.get('price') || '0');
+        const unitsNeeded = Math.ceil((minimumAmount - currentAmount) / basePrice);
+        
+        console.log('AMOUNT_TOO_LOW error details:', {
+          minimumAmount,
+          currentAmount,
+          basePrice,
+          quantity: selectedQuantity,
+          calculatedTotal: basePrice * selectedQuantity,
+          unitsNeeded
+        });
+        
+        setError(`Minimum order amount is ₹${minimumAmount}. Your order total is ₹${currentAmount}. Add ${unitsNeeded} more ${searchParams?.get('unit') || 'unit'} to proceed with online payment, or choose Cash on Delivery.`);
+      } else if (error.response?.data?.error) {
+        console.log('Generic error response:', error.response.data);
+        setError(error.response.data.error);
+      } else {
+        console.log('Unknown error:', error);
+        setError('Failed to create checkout session. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+      setSwitchingPayment(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      // Don't create Stripe session on initial load
+      // Let user choose payment method first
+      setLoading(false);
+    }
+  }, [user, searchParams]); // Only run once when user loads
+
+  // Separate effect for payment method changes
+  useEffect(() => {
+    console.log('Payment method changed:', { paymentMethod, user: !!user, quantity });
+    
+    if (user && paymentMethod === 'online') {
+      console.log('Creating Stripe session for online payment...');
+      setSwitchingPayment(true);
+      createCheckoutSession(quantity);
+    } else if (paymentMethod === 'cod') {
+      console.log('Switching to COD, clearing Stripe session...');
+      setSwitchingPayment(false);
+      setCheckoutUrl(null);
+      setError(null);
+    }
+  }, [paymentMethod, quantity]); // Only run when payment method or quantity changes
+
+  const handleQuantityChange = (newQuantity: number) => {
+    if (newQuantity >= 1 && newQuantity <= 100) {
+      setQuantity(newQuantity);
+      // Recreate checkout session with new quantity only if online payment is selected
+      if (paymentMethod === 'online') {
+        createCheckoutSession(newQuantity);
+      }
+    }
+  };
+
+  const handlePaymentMethodChange = (method: string) => {
+    setPaymentMethod(method);
+    // The useEffect will handle the session creation/clearing automatically
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-green-700 text-lg">Setting up checkout...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 via-white to-green-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-red-700 mb-4">Checkout Error</h2>
+          <p className="text-red-600 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <CheckoutForm 
+    user={user} 
+    checkoutUrl={checkoutUrl} 
+    quantity={quantity}
+    onQuantityChange={handleQuantityChange}
+    paymentMethod={paymentMethod}
+    onPaymentMethodChange={handlePaymentMethodChange}
+    switchingPayment={switchingPayment}
+  />;
+};
+
+export default CheckoutClient;

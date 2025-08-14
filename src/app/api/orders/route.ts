@@ -43,7 +43,14 @@ export async function GET(req: NextRequest) {
   
   const orders = await Order.find(query).sort({ createdAt: -1 });
   console.log('Found orders:', orders.length);
-  console.log('Sample order items:', orders.slice(0, 2).map(o => o.items.map((i: OrderItem) => ({ title: i.title, seller: i.seller }))));
+  console.log('Sample order items:', orders.slice(0, 2).map(o => o.items.map((i: OrderItem) => ({ 
+    title: i.title, 
+    image: i.image,
+    price: i.price,
+    quantity: i.quantity,
+    unit: i.unit,
+    seller: i.seller 
+  }))));
   
   return NextResponse.json(orders);
 }

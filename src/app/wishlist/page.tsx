@@ -17,6 +17,7 @@ interface WishlistItem {
     category?: string;
     seller?: { name?: string };
   };
+  originalProductId?: string;
   addedAt: string;
 }
 
@@ -43,6 +44,8 @@ export default function WishlistPage() {
       if (response.ok) {
         const data = await response.json();
         setWishlistItems(data);
+      } else {
+        console.error('Failed to fetch wishlist:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Error fetching wishlist:', error);
@@ -51,17 +54,72 @@ export default function WishlistPage() {
     }
   };
 
-  const removeFromWishlist = async (productId: string) => {
+  const removeFromWishlist = async (productId: string, itemId?: string) => {
+    if (!productId && !itemId) {
+      console.error('No product ID or item ID provided for removal');
+      return;
+    }
+    
+    console.log('Attempting to remove productId:', productId, 'itemId:', itemId);
+    
     try {
-      const response = await fetch(`/api/wishlist?userEmail=${encodeURIComponent(user!.primaryEmailAddress!.emailAddress!)}&productId=${productId}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) {
-        // Remove from local state
-        setWishlistItems(prev => prev.filter(item => item.productId._id !== productId));
+      // If we have a productId, try to remove by productId first
+      if (productId) {
+        const response = await fetch(`/api/wishlist?userEmail=${encodeURIComponent(user!.primaryEmailAddress!.emailAddress!)}&productId=${productId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          // Remove from local state
+          setWishlistItems(prev => prev.filter(item => {
+            const itemProductId = item.originalProductId || item.productId?._id || item.productId;
+            return itemProductId !== productId;
+          }));
+          return;
+        } else if (response.status === 404) {
+          // If product not found, try to remove by item ID
+          console.log('Product not found, trying to remove by item ID');
+        }
       }
+      
+      // If productId removal failed or we only have itemId, remove by item ID
+      if (itemId) {
+        const response = await fetch(`/api/wishlist/remove-by-id?userEmail=${encodeURIComponent(user!.primaryEmailAddress!.emailAddress!)}&itemId=${itemId}`, {
+          method: 'DELETE',
+        });
+        
+        if (response.ok) {
+          // Remove from local state by item ID
+          setWishlistItems(prev => prev.filter(item => item._id !== itemId));
+          return;
+        } else {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Failed to remove wishlist item by ID:', response.status, response.statusText, errorData);
+        }
+      }
+      
+      // If both methods failed, just remove from local state to prevent UI issues
+      console.warn('Failed to remove from server, removing from local state only');
+      if (productId) {
+        setWishlistItems(prev => prev.filter(item => {
+          const itemProductId = item.originalProductId || item.productId?._id || item.productId;
+          return itemProductId !== productId;
+        }));
+      } else if (itemId) {
+        setWishlistItems(prev => prev.filter(item => item._id !== itemId));
+      }
+      
     } catch (error) {
       console.error('Error removing from wishlist:', error);
+      // Even if there's an error, remove from local state to prevent UI issues
+      if (productId) {
+        setWishlistItems(prev => prev.filter(item => {
+          const itemProductId = item.originalProductId || item.productId?._id || item.productId;
+          return itemProductId !== productId;
+        }));
+      } else if (itemId) {
+        setWishlistItems(prev => prev.filter(item => item._id !== itemId));
+      }
     }
   };
 
@@ -108,19 +166,33 @@ export default function WishlistPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
               {wishlistItems.map((item) => (
                 <div key={item._id} className="relative">
-                  <ProductCard 
-                    {...item.productId} 
-                    showActions={true}
-                  />
-                  <button
-                    onClick={() => removeFromWishlist(item.productId._id)}
-                    className="absolute top-2 left-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow z-20 transition-colors"
-                    title="Remove from wishlist"
-                  >
-                    <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </button>
+                  {item.productId ? (
+                    <>
+                      <ProductCard 
+                        {...item.productId} 
+                        showActions={true}
+                      />
+                      <button
+                        onClick={() => removeFromWishlist(item.originalProductId || (typeof item.productId === 'string' ? item.productId : item.productId?._id) || '', item._id)}
+                        className="absolute top-2 left-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow z-20 transition-colors"
+                        title="Remove from wishlist"
+                      >
+                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </>
+                  ) : (
+                    <div className="card p-4 border border-gray-200 bg-white rounded-2xl">
+                      <div className="text-gray-500 text-center">Product not found</div>
+                      <button
+                        onClick={() => removeFromWishlist('', item._id)}
+                        className="mt-2 w-full bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
