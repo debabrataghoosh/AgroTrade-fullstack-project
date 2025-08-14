@@ -83,12 +83,21 @@ export default function ChatPage() {
       const res = await fetch(`/api/messages?roomId=${id}`);
       if (res.ok) {
         const data = await res.json();
-        setMessages(data);
+        if (Array.isArray(data)) {
+          setMessages(data);
+          console.log(`Loaded ${data.length} messages for room: ${id}`);
+        } else {
+          console.error('Invalid messages data:', data);
+          setError("Invalid message data received.");
+        }
       } else {
-        setError("Failed to load messages.");
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Failed to load messages:', res.status, errorData);
+        setError(`Failed to load messages: ${res.status}`);
       }
     } catch (error) {
-      setError("Failed to load messages.");
+      console.error('Error fetching messages:', error);
+      setError("Failed to load messages. Please try again.");
     }
     setLoading(false);
   };
@@ -114,11 +123,20 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(msg),
       });
-      if (!res.ok) {
-        setError("Failed to send message.");
+      
+      if (res.ok) {
+        const savedMessage = await res.json();
+        console.log('Message saved successfully:', savedMessage);
+        // Add the saved message to local state if needed
+        setMessages(prev => [...prev, savedMessage]);
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        console.error('Failed to send message:', res.status, errorData);
+        setError(`Failed to send message: ${errorData.error || res.status}`);
       }
     } catch (error) {
-      setError("Failed to send message.");
+      console.error('Error sending message:', error);
+      setError("Failed to send message. Please try again.");
     }
   };
 
