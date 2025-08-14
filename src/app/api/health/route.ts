@@ -27,10 +27,17 @@ export async function GET() {
 
     // Check Socket.IO server (Render)
     try {
+      // Use AbortController for timeout functionality
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
       const response = await fetch('https://agrotrade-socket-server.onrender.com/health', {
         method: 'GET',
-        timeout: 5000
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         healthStatus.services.socketio = 'operational';
       } else {

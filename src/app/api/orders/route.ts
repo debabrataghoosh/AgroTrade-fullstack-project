@@ -14,10 +14,75 @@ interface OrderItem {
 }
 
 export async function POST(req: NextRequest) {
-  await dbConnect();
-  const data = await req.json();
-  const order = await Order.create(data);
-  return NextResponse.json(order, { status: 201 });
+  try {
+    console.log('Orders API POST called');
+    
+    // Connect to database
+    await dbConnect();
+    console.log('Database connected for order creation');
+    
+    // Parse request data
+    const data = await req.json();
+    console.log('Order data received:', {
+      userEmail: data.userEmail,
+      itemsCount: data.items?.length,
+      paymentMethod: data.paymentMethod,
+      totalAmount: data.totalAmount
+    });
+    
+    // Validate required fields
+    if (!data.userEmail) {
+      console.error('Missing userEmail in order data');
+      return NextResponse.json({ 
+        error: 'User email is required' 
+      }, { status: 400 });
+    }
+    
+    if (!data.items || data.items.length === 0) {
+      console.error('Missing items in order data');
+      return NextResponse.json({ 
+        error: 'Order must contain at least one item' 
+      }, { status: 400 });
+    }
+    
+    // Set default values for COD orders
+    if (data.paymentMethod === 'cod') {
+      data.paymentStatus = 'pending';
+      data.status = 'Placed';
+    }
+    
+    // Create the order
+    const order = await Order.create(data);
+    console.log('Order created successfully:', {
+      orderId: order._id,
+      userEmail: order.userEmail,
+      status: order.status,
+      paymentMethod: order.paymentMethod
+    });
+    
+    return NextResponse.json(order, { status: 201 });
+    
+  } catch (error: any) {
+    console.error('Error creating order:', error);
+    
+    // Handle specific error types
+    if (error.name === 'ValidationError') {
+      return NextResponse.json({ 
+        error: 'Invalid order data',
+        details: error.message 
+      }, { status: 400 });
+    }
+    
+    if (error.name === 'MongoError' && error.code === 11000) {
+      return NextResponse.json({ 
+        error: 'Order already exists' 
+      }, { status: 409 });
+    }
+    
+    return NextResponse.json({ 
+      error: 'Failed to create order. Please try again.' 
+    }, { status: 500 });
+  }
 }
 
 export async function GET(req: NextRequest) {

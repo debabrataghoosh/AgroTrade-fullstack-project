@@ -87,17 +87,32 @@ const CheckoutForm = ({ user, checkoutUrl, quantity, onQuantityChange, paymentMe
         seller: getSearchParam('seller'),
       };
 
-      await axios.post('/api/orders', {
+      const orderData = {
         userEmail: primaryEmail,
         items: [product],
         address: shippingAddress,
         status: 'Placed',
         paymentMethod: 'cod',
-      });
+        paymentStatus: 'pending',
+        totalAmount: product.price * product.quantity,
+      };
+
+      console.log('Creating COD order with data:', orderData);
+      
+      const response = await axios.post('/api/orders', orderData);
+      console.log('Order created successfully:', response.data);
+      
       router.push('/order-success?payment_method=cod');
-    } catch (error) {
-      console.error(error);
-      setErrorMessage('Failed to place order. Please try again.');
+    } catch (error: any) {
+      console.error('COD order error:', error);
+      
+      if (error.response?.data?.error) {
+        setErrorMessage(`Order failed: ${error.response.data.error}`);
+      } else if (error.message) {
+        setErrorMessage(`Order failed: ${error.message}`);
+      } else {
+        setErrorMessage('Failed to place order. Please try again.');
+      }
     }
   };
 
