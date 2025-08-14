@@ -8,7 +8,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!socketRef.current) {
-      socketRef.current = io("https://agrotrade-fullstack-project.onrender.com", {
+      socketRef.current = io("https://agrotrade-socket-server.onrender.com", {
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
